@@ -119,7 +119,7 @@ export const ProductList: React.FC<ProductListProps> = ({
               className="bg-white rounded-3xl border border-gray-100 p-4 shadow-xs hover:shadow-md transition-all flex flex-col justify-between group"
             >
               <div className="flex flex-col gap-3">
-                <div className="relative w-full h-48 rounded-2xl overflow-hidden bg-gray-50 border border-gray-50 flex items-center justify-center">
+                <div className="relative w-full h-48 rounded-2xl overflow-hidden bg-gray-50 border border-gray-50 flex items-center justify-center cursor-pointer">
                   <Image
                     src={product.imageUrl}
                     alt={product.title}

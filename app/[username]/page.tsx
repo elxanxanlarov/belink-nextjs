@@ -32,6 +32,7 @@ export default async function UserShopPage({ params }: ShopPageProps) {
           title: true,
           price: true,
           imageUrl: true,
+          images: true,
           description: true,
           categoryId: true,
           category: {

@@ -16,12 +16,16 @@ interface MultiImageUploadProps {
   images: UploadedImage[];
   onChange: (images: UploadedImage[]) => void;
   maxImages?: number;
+  onDelete?: (imageUrl: string) => void;
+  productId?: string;
 }
 
 export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
   images,
   onChange,
   maxImages = 8,
+  onDelete,
+  productId,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pendingCropSrc, setPendingCropSrc] = useState("");
@@ -85,12 +89,21 @@ export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
     onChange(images.map((img) => ({ ...img, isCover: img.id === id })));
   };
 
-  const removeImage = (id: string) => {
+  const removeImage = (id: string, url: string) => {
+    if (images.length <= 1) {
+      showToast("Ən azı 1 şəkil qalmalıdır.", "error");
+      return;
+    }
+
     const filtered = images.filter((img) => img.id !== id);
     if (filtered.length > 0 && !filtered.some((img) => img.isCover)) {
       filtered[0].isCover = true;
     }
     onChange(filtered);
+    
+    if (onDelete) {
+      onDelete(url);
+    }
   };
 
   const coverImage = images.find((img) => img.isCover);
@@ -176,16 +189,18 @@ export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
                   </div>
                 )}
 
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeImage(img.id);
-                  }}
-                  className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-md"
-                >
-                  <X size={10} />
-                </button>
+                {!img.isCover && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeImage(img.id, img.url);
+                    }}
+                    className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-md"
+                  >
+                    <X size={10} />
+                  </button>
+                )}
 
                 {!img.isCover && (
                   <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">

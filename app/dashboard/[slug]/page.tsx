@@ -100,6 +100,10 @@ export default function DashboardSlugPage({ params }: PageProps) {
     setModalOpen(true);
   };
 
+  const handleProductClick = (product: DashboardProduct) => {
+    // Optional: track product views or other analytics
+  };
+
   const handleEdit = (product: DashboardProduct) => {
     setProductToEdit(product);
     setModalOpen(true);

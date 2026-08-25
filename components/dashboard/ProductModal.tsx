@@ -150,6 +150,8 @@ export const ProductModal: React.FC<ProductModalProps> = ({
           <MultiImageUpload
             images={uploadedImages}
             onChange={setUploadedImages}
+            onDelete={undefined}
+            productId={undefined}
           />
 
           <Input

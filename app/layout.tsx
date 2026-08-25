@@ -29,7 +29,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       lang="az"
       className={`${jakarta.variable} font-sans h-full antialiased`}
     >
-      <body className={`${jakarta.className} min-h-full flex flex-col`}>
+      <body className={`${jakarta.className} min-h-full flex flex-col`} suppressHydrationWarning>
         <AuthProvider session={session}>
           <SetUsernameModal />
           {children}
