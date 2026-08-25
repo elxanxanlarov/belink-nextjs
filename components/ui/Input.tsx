@@ -8,7 +8,14 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, icon, rightElement, className = "", type = "text", ...props }, ref) => {
+  ({ label, error, icon, rightElement, className = "", type = "text", onWheel, ...props }, ref) => {
+    // For number inputs, prevent scroll from changing value
+    const handleWheel = type === "number"
+      ? (e: React.WheelEvent<HTMLInputElement>) => {
+          e.currentTarget.blur();
+          onWheel?.(e);
+        }
+      : onWheel;
     return (
       <div className="flex flex-col gap-1.5 w-full">
         {label && <label className="text-xs font-bold text-gray-700">{label}</label>}
@@ -21,6 +28,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           <input
             ref={ref}
             type={type}
+            min={type === "number" ? 0 : undefined}
+            onWheel={handleWheel}
             className={`w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm text-gray-900 focus:outline-none focus:border-[#1a7a4a] focus:ring-1 focus:ring-[#1a7a4a] transition-all disabled:opacity-50 ${
               icon ? "pl-10" : ""
             } ${rightElement ? "pr-11" : ""} ${className}`}

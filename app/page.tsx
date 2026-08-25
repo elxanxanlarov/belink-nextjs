@@ -12,7 +12,6 @@ import AuthModal from "@/components/modals/AuthModal";
 import PrivacyModal from "@/components/modals/PrivacyModal";
 import TermsModal from "@/components/modals/TermsModal";
 import ContactModal from "@/components/modals/ContactModal";
-import SetUsernameModal from "@/components/modals/SetUsernameModal";
 import ImagePreviewModal from "@/components/modals/ImagePreviewModal";
 import MobileBottomNav from "@/components/MobileBottomNav";
 
@@ -32,7 +31,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-white font-sans pb-16 md:pb-0">
-      <SetUsernameModal />
       <AuthModal
         isOpen={authOpen}
         onClose={() => setAuthOpen(false)}

@@ -26,7 +26,6 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
 
-  // Pending crop & local preview state
   const [pendingCropSrc, setPendingCropSrc] = useState<string>("");
   const [cropModalOpen, setCropModalOpen] = useState(false);
   const [pendingBlob, setPendingBlob] = useState<Blob | null>(null);
@@ -55,7 +54,6 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
   if (!isOpen) return null;
 
-  // File selection -> open crop modal (do not upload yet!)
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -91,7 +89,6 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     try {
       let finalImageUrl = imageUrl;
 
-      // Only upload to Cloudinary when user clicks Save!
       if (pendingBlob) {
         const formData = new FormData();
         formData.append("file", pendingBlob, "product.jpg");
@@ -142,7 +139,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   const displayImage = localPreviewUrl || imageUrl;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 select-none">
       <ImageCropModal
         isOpen={cropModalOpen}
         onClose={() => setCropModalOpen(false)}

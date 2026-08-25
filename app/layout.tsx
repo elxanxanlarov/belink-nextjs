@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import AuthProvider from "@/components/providers/AuthProvider";
+import SetUsernameModal from "@/components/modals/SetUsernameModal";
+import { auth } from "@/lib/auth";
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin", "latin-ext"],
@@ -19,17 +21,20 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const session = await auth();
+
   return (
     <html
       lang="az"
       className={`${jakarta.variable} font-sans h-full antialiased`}
     >
       <body className={`${jakarta.className} min-h-full flex flex-col`}>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider session={session}>
+          <SetUsernameModal />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );
 }
-
-

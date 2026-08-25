@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { Menu, X, LogOut, ChevronDown, User as UserIcon, Store } from "lucide-react";
+import { Menu, X, LogOut, ChevronDown, User as UserIcon, Store, ShoppingBag } from "lucide-react";
 import { signIn, signOut, useSession } from "next-auth/react";
 import GoogleIcon from "@/assets/icons/GoogleIcon";
 import { NavbarProps } from "@/types";
@@ -29,7 +29,7 @@ export default function Navbar({ onGoogleClick, onOpenImagePreview }: NavbarProp
     if (onGoogleClick) {
       onGoogleClick();
     } else {
-      signIn("google", { callbackUrl: "/dashboard/products" });
+      signIn("google", { callbackUrl: "/dashboard/profile" });
     }
   };
 
@@ -112,6 +112,15 @@ export default function Navbar({ onGoogleClick, onOpenImagePreview }: NavbarProp
                         Profilim
                       </Link>
 
+                      <Link
+                        href="/dashboard/products"
+                        onClick={() => setUserDropdownOpen(false)}
+                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-[#1a7a4a] transition-colors"
+                      >
+                        <ShoppingBag size={16} />
+                        Məhsullarım
+                      </Link>
+
                       {userUsername && (
                         <Link
                           href={`/${userUsername}`}
@@ -181,6 +190,15 @@ export default function Navbar({ onGoogleClick, onOpenImagePreview }: NavbarProp
                 >
                   <UserIcon size={18} className="text-[#1a7a4a]" />
                   Profilim
+                </Link>
+
+                <Link
+                  href="/dashboard/products"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50"
+                >
+                  <ShoppingBag size={18} className="text-[#1a7a4a]" />
+                  Məhsullarım
                 </Link>
 
                 {userUsername && (

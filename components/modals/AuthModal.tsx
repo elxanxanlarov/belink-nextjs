@@ -25,7 +25,7 @@ export default function AuthModal({ isOpen, onClose, onOpenTerms }: AuthModalPro
       setShowError(true);
       return;
     }
-    signIn("google", { callbackUrl: "/" });
+    signIn("google", { callbackUrl: "/dashboard/profile" });
   };
 
   return (

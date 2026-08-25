@@ -46,5 +46,8 @@ next-env.d.ts
 .gemini/
 .agents/
 scratch/
-brain/
+brain/  
 
+AGENTS.md
+CLAUDE.md
+.geminiignore

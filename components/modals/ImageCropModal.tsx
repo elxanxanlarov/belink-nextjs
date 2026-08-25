@@ -10,6 +10,10 @@ interface ImageCropModalProps {
   onClose: () => void;
   imageSrc: string;
   onCropComplete: (blob: Blob, dataUrl: string) => void;
+  /** Set true for circular crop (profile photo). Default: false (free rectangular) */
+  circular?: boolean;
+  /** Optional fixed aspect ratio (e.g. 1 for square, 4/3 for product). Undefined = free */
+  aspect?: number;
 }
 
 export default function ImageCropModal({
@@ -17,6 +21,8 @@ export default function ImageCropModal({
   onClose,
   imageSrc,
   onCropComplete,
+  circular = false,
+  aspect,
 }: ImageCropModalProps) {
   const imgRef = useRef<HTMLImageElement>(null);
   const [crop, setCrop] = useState<Crop>();
@@ -24,14 +30,30 @@ export default function ImageCropModal({
 
   if (!isOpen || !imageSrc) return null;
 
+  // Determine the effective aspect ratio
+  const effectiveAspect = circular ? 1 : aspect;
+
   function onImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
     const { width, height } = e.currentTarget;
-    const initialCrop = centerCrop(
-      makeAspectCrop({ unit: "%", width: 90 }, 1, width, height),
-      width,
-      height
-    );
-    setCrop(initialCrop);
+
+    if (effectiveAspect) {
+      // Fixed or circular aspect — center crop
+      const initialCrop = centerCrop(
+        makeAspectCrop({ unit: "%", width: 85 }, effectiveAspect, width, height),
+        width,
+        height
+      );
+      setCrop(initialCrop);
+    } else {
+      // Free crop — default to full image selection
+      setCrop({
+        unit: "%",
+        x: 5,
+        y: 5,
+        width: 90,
+        height: 90,
+      });
+    }
   }
 
   const getCroppedImg = async () => {
@@ -93,7 +115,12 @@ export default function ImageCropModal({
       <div className="absolute inset-0 bg-black/75" onClick={onClose} />
       <div className="relative bg-white rounded-3xl shadow-2xl overflow-hidden max-w-md w-full p-6 flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200 z-10">
         <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-          <h3 className="font-extrabold text-gray-900 text-base">Şəkli Kəs</h3>
+          <div>
+            <h3 className="font-extrabold text-gray-900 text-base">Şəkli Kəs</h3>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {circular ? "Dairəvi kəsim (profil şəkli)" : "İstədiyiniz hissəni seçin"}
+            </p>
+          </div>
           <button
             onClick={onClose}
             className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
@@ -107,8 +134,8 @@ export default function ImageCropModal({
             crop={crop}
             onChange={(c) => setCrop(c)}
             onComplete={(c) => setCompletedCrop(c)}
-            aspect={1}
-            circularCrop
+            aspect={effectiveAspect}
+            circularCrop={circular}
           >
             <img
               ref={imgRef}

@@ -74,6 +74,28 @@ export default function DashboardSlugPage({ params }: PageProps) {
   }, [status, router]);
 
   const handleOpenAdd = () => {
+    if (!profile?.whatsappPhone) {
+      Swal.fire({
+        title: "WhatsApp Nömrəsi Tələb Olunur",
+        text: "Məhsul yaratmaq üçün əvvəlcə profilinizdə WhatsApp nömrənizi qeyd etməlisiniz ki, müştərilər sizinlə əlaqə saxlaya bilsin.",
+        icon: "info",
+        confirmButtonText: "Profilə Get",
+        showCancelButton: true,
+        cancelButtonText: "Bağla",
+        customClass: {
+          popup: "rounded-3xl shadow-2xl font-sans border border-gray-100",
+          confirmButton: "px-6 py-2.5 rounded-full font-bold text-sm bg-[#1a7a4a] text-white cursor-pointer mr-2",
+          cancelButton: "px-6 py-2.5 rounded-full font-bold text-sm bg-gray-100 text-gray-700 cursor-pointer",
+        },
+        buttonsStyling: false,
+      }).then((result) => {
+        if (result.isConfirmed) {
+          router.push("/dashboard/profile?phoneInput=true");
+          setActiveTab("profile");
+        }
+      });
+      return;
+    }
     setProductToEdit(null);
     setModalOpen(true);
   };

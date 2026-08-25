@@ -46,6 +46,13 @@ model User {
   username      String?   @unique
   shopName      String?   @map("shop_name")
   bio           String?
+  whatsappPhone String?   @map("whatsapp_phone")
+  instagram     String?
+  tiktok        String?
+  linkedin      String?
+  twitter       String?
+  facebook      String?
+  youtube       String?
   accounts      Account[]
   sessions      Session[]
   products      Product[]

@@ -25,5 +25,12 @@ export interface UserProfileData {
   username?: string | null;
   shopName?: string | null;
   bio?: string | null;
+  whatsappPhone?: string | null;
+  instagram?: string | null;
+  tiktok?: string | null;
+  linkedin?: string | null;
+  twitter?: string | null;
+  facebook?: string | null;
+  youtube?: string | null;
   productCount?: number;
 }
