@@ -12,6 +12,8 @@ export interface UploadedImage {
   isCover: boolean;
 }
 
+// dd
+
 interface MultiImageUploadProps {
   images: UploadedImage[];
   onChange: (images: UploadedImage[]) => void;
