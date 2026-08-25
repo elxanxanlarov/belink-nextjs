@@ -8,24 +8,18 @@ export async function GET() {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "İcazə verilmədi." },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "İcazə verilmədi." }, { status: 401 });
     }
 
     const products = await prisma.product.findMany({
       where: { userId: session.user.id },
+      include: { category: true },
       orderBy: { createdAt: "desc" },
     });
 
     return NextResponse.json({ products });
-  } catch (error) {
-    console.error("Fetch products error:", error);
-    return NextResponse.json(
-      { error: "Məhsulları yükləyərkən xəta baş verdi." },
-      { status: 500 }
-    );
+  } catch {
+    return NextResponse.json({ error: "Məhsulları yükləyərkən xəta baş verdi." }, { status: 500 });
   }
 }
 
@@ -33,10 +27,7 @@ export async function POST(req: Request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "İcazə verilmədi." },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "İcazə verilmədi." }, { status: 401 });
     }
 
     const rateCheck = checkRateLimit(`product_create_${session.user.id}`, 1000);
@@ -48,7 +39,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { title, price, imageUrl, description } = body;
+    const { title, price, imageUrl, images, description, categoryId } = body;
 
     if (!title || price === undefined || !imageUrl) {
       return NextResponse.json(
@@ -61,12 +52,19 @@ export async function POST(req: Request) {
     const numericPrice = sanitizePrice(price);
     const cleanImageUrl = sanitizeText(imageUrl, 500);
     const cleanDescription = description ? sanitizeText(description, 300) : null;
+    const cleanImages: string[] = Array.isArray(images)
+      ? images.filter((u: any) => typeof u === "string" && u.trim()).map((u: string) => u.trim()).slice(0, 10)
+      : [];
 
     if (!cleanTitle) {
-      return NextResponse.json(
-        { error: "Məhsul adı keçərsizdir." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Məhsul adı keçərsizdir." }, { status: 400 });
+    }
+
+    if (categoryId) {
+      const cat = await prisma.category.findUnique({ where: { id: categoryId } });
+      if (!cat || cat.userId !== session.user.id) {
+        return NextResponse.json({ error: "Kateqoriya tapılmadı." }, { status: 400 });
+      }
     }
 
     const product = await prisma.product.create({
@@ -74,17 +72,16 @@ export async function POST(req: Request) {
         title: cleanTitle,
         price: numericPrice,
         imageUrl: cleanImageUrl,
+        images: cleanImages,
         description: cleanDescription,
         userId: session.user.id,
+        categoryId: categoryId || null,
       },
+      include: { category: true },
     });
 
     return NextResponse.json({ success: true, product });
-  } catch (error) {
-    console.error("Create product error:", error);
-    return NextResponse.json(
-      { error: "Məhsul yaradılarkən xəta baş verdi." },
-      { status: 500 }
-    );
+  } catch {
+    return NextResponse.json({ error: "Məhsul yaradılarkən xəta baş verdi." }, { status: 500 });
   }
 }

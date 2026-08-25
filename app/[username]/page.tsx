@@ -33,6 +33,10 @@ export default async function UserShopPage({ params }: ShopPageProps) {
           price: true,
           imageUrl: true,
           description: true,
+          categoryId: true,
+          category: {
+            select: { id: true, name: true },
+          },
         },
         orderBy: { createdAt: "desc" },
       },

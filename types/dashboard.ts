@@ -1,12 +1,22 @@
 export type DashboardTab = "products" | "profile";
 
+export interface Category {
+  id: string;
+  name: string;
+  userId: string;
+  createdAt: string | Date;
+}
+
 export interface DashboardProduct {
   id: string;
   title: string;
   price: number;
   imageUrl: string;
+  images: string[];
   description?: string | null;
   userId: string;
+  categoryId?: string | null;
+  category?: Category | null;
   createdAt: string | Date;
 }
 

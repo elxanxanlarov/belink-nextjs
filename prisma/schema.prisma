@@ -55,6 +55,7 @@ model User {
   youtube       String?
   accounts      Account[]
   sessions      Session[]
+  categories    Category[]
   products      Product[]
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
@@ -62,15 +63,30 @@ model User {
   @@map("users")
 }
 
+model Category {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  userId    String    @map("user_id") @db.ObjectId
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  products  Product[]
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@unique([name, userId])
+  @@map("categories")
+}
+
 model Product {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
   title       String
   price       Float
-  imageUrl    String   @map("image_url")
+  imageUrl    String    @map("image_url")
+  images      String[]
   description String?
-  userId      String   @map("user_id") @db.ObjectId
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now()) @map("created_at")
+  userId      String    @map("user_id") @db.ObjectId
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId  String?   @map("category_id") @db.ObjectId
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now()) @map("created_at")
 
   @@map("products")
 }

@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import Image from "next/image";
-import { X, Upload, Loader2, Trash2 } from "lucide-react";
-import { DashboardProduct } from "@/types";
+import React, { useState, useEffect } from "react";
+import { X, Loader2 } from "lucide-react";
+import { DashboardProduct, Category } from "@/types";
 import { Input } from "@/components/ui/Input";
-import ImageCropModal from "@/components/modals/ImageCropModal";
+import { CategorySelect } from "@/components/ui/CategorySelect";
+import { MultiImageUpload, UploadedImage } from "@/components/ui/MultiImageUpload";
+import { CreateCategoryModal } from "@/components/modals/CreateCategoryModal";
 import { showToast } from "@/lib/swal";
 
 export interface ProductModalProps {
@@ -24,62 +25,55 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
-
-  const [pendingCropSrc, setPendingCropSrc] = useState<string>("");
-  const [cropModalOpen, setCropModalOpen] = useState(false);
-  const [pendingBlob, setPendingBlob] = useState<Blob | null>(null);
-  const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
-
+  const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [createCategoryOpen, setCreateCategoryOpen] = useState(false);
+  const [categoryKey, setCategoryKey] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (productToEdit) {
       setTitle(productToEdit.title);
       setPrice(productToEdit.price.toString());
       setDescription(productToEdit.description || "");
-      setImageUrl(productToEdit.imageUrl);
+      setCategoryId(productToEdit.categoryId || null);
+
+      const allImages = productToEdit.images?.length
+        ? productToEdit.images
+        : productToEdit.imageUrl
+        ? [productToEdit.imageUrl]
+        : [];
+
+      setUploadedImages(
+        allImages.map((url, i) => ({
+          id: `existing-${i}`,
+          url,
+          isCover: url === productToEdit.imageUrl || i === 0,
+        }))
+      );
     } else {
       setTitle("");
       setPrice("");
       setDescription("");
-      setImageUrl("");
+      setCategoryId(null);
+      setUploadedImages([]);
     }
-    setPendingBlob(null);
-    setLocalPreviewUrl(null);
     setError("");
   }, [productToEdit, isOpen]);
 
   if (!isOpen) return null;
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setPendingCropSrc(reader.result);
-        setCropModalOpen(true);
-      }
-    };
-    reader.readAsDataURL(file);
-
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
-
-  const handleCropComplete = (blob: Blob, dataUrl: string) => {
-    setPendingBlob(blob);
-    setLocalPreviewUrl(dataUrl);
+  const handleCategoryCreated = (category: Category) => {
+    setCategoryId(category.id);
+    setCategoryKey((k) => k + 1);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const activeImage = localPreviewUrl || imageUrl;
-    if (!activeImage && !pendingBlob) {
-      setError("Məhsulun şəklini seçin.");
+
+    if (uploadedImages.length === 0) {
+      setError("Ən azı 1 şəkil yükləyin.");
       return;
     }
 
@@ -87,25 +81,8 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     setError("");
 
     try {
-      let finalImageUrl = imageUrl;
-
-      if (pendingBlob) {
-        const formData = new FormData();
-        formData.append("file", pendingBlob, "product.jpg");
-        formData.append("folder", "products");
-
-        const uploadRes = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
-
-        const uploadData = await uploadRes.json();
-        if (!uploadRes.ok) {
-          throw new Error(uploadData.error || "Şəkil bulud yaddaşına yüklənmədi.");
-        }
-
-        finalImageUrl = uploadData.url;
-      }
+      const coverImg = uploadedImages.find((img) => img.isCover) || uploadedImages[0];
+      const imageUrls = uploadedImages.map((img) => img.url);
 
       const url = productToEdit ? `/api/products/${productToEdit.id}` : "/api/products";
       const method = productToEdit ? "PUT" : "POST";
@@ -116,15 +93,15 @@ export const ProductModal: React.FC<ProductModalProps> = ({
         body: JSON.stringify({
           title,
           price: parseFloat(price),
-          imageUrl: finalImageUrl,
+          imageUrl: coverImg.url,
+          images: imageUrls,
           description,
+          categoryId,
         }),
       });
 
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Əməliyyat uğursuz oldu.");
-      }
+      if (!res.ok) throw new Error(data.error || "Əməliyyat uğursuz oldu.");
 
       showToast(productToEdit ? "Məhsul yeniləndi" : "Məhsul əlavə edildi", "success");
       onSuccess();
@@ -136,31 +113,28 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     }
   };
 
-  const displayImage = localPreviewUrl || imageUrl;
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 select-none">
-      <ImageCropModal
-        isOpen={cropModalOpen}
-        onClose={() => setCropModalOpen(false)}
-        imageSrc={pendingCropSrc}
-        onCropComplete={handleCropComplete}
+      <CreateCategoryModal
+        isOpen={createCategoryOpen}
+        onClose={() => setCreateCategoryOpen(false)}
+        onCreated={handleCategoryCreated}
       />
 
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg p-6 sm:p-8 flex flex-col gap-6 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg p-6 sm:p-8 flex flex-col gap-5 max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-xl font-extrabold text-gray-900">
               {productToEdit ? "Məhsulu Redaktə Et" : "Yeni Məhsul Əlavə Et"}
             </h3>
             <p className="text-xs text-gray-400 mt-0.5">
-              Məhsul məlumatlarını və şəklini qeyd edin
+              Məhsul məlumatlarını qeyd edin
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+            className="p-2 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
           >
             <X size={20} />
           </button>
@@ -173,57 +147,10 @@ export const ProductModal: React.FC<ProductModalProps> = ({
         )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-gray-700">Məhsul Şəkli</label>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleFileSelect}
-            />
-
-            {displayImage ? (
-              <div className="relative w-full h-48 rounded-2xl overflow-hidden border border-gray-100 group bg-gray-50 flex items-center justify-center">
-                <Image
-                  src={displayImage}
-                  alt="Product preview"
-                  fill
-                  unoptimized
-                  className="object-contain"
-                />
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="px-4 py-2 rounded-full bg-white text-gray-800 font-bold text-xs shadow-md hover:bg-gray-100 transition-colors cursor-pointer"
-                  >
-                    Dəyiş
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setImageUrl("");
-                      setLocalPreviewUrl(null);
-                      setPendingBlob(null);
-                    }}
-                    className="p-2 rounded-full bg-red-600 text-white shadow-md hover:bg-red-700 transition-colors cursor-pointer"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full h-40 rounded-2xl border-2 border-dashed border-gray-200 hover:border-[#1a7a4a] bg-gray-50/50 hover:bg-emerald-50/30 flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-[#1a7a4a] transition-all cursor-pointer"
-              >
-                <Upload size={24} />
-                <span className="text-xs font-semibold">Şəkil seçin (Seçildikdən sonra kəsiləcək)</span>
-              </button>
-            )}
-          </div>
+          <MultiImageUpload
+            images={uploadedImages}
+            onChange={setUploadedImages}
+          />
 
           <Input
             label="Məhsulun Adı"
@@ -246,19 +173,26 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             placeholder="məs: 45.00"
           />
 
+          <CategorySelect
+            key={categoryKey}
+            value={categoryId}
+            onChange={setCategoryId}
+            onCreateNew={() => setCreateCategoryOpen(true)}
+          />
+
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-gray-700">Təsvir (İxtiyari)</label>
             <textarea
-              rows={3}
-              maxLength={300}
+              rows={4}
+              maxLength={600}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Məhsul haqqında qısa məlumat..."
+              placeholder="Məhsul haqqında ətraflı məlumat, ölçülər, rənglər, çatdırılma şərtləri..."
               className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm text-gray-900 focus:outline-none focus:border-[#1a7a4a] focus:ring-1 focus:ring-[#1a7a4a] resize-none"
             />
           </div>
 
-          <div className="flex gap-3 mt-2">
+          <div className="flex gap-3 mt-1">
             <button
               type="button"
               onClick={onClose}
@@ -273,7 +207,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             >
               {submitting ? (
                 <>
-                  <Loader2 size={16} className="animate-spin" /> Yüklənir...
+                  <Loader2 size={16} className="animate-spin" /> Saxlanılır...
                 </>
               ) : (
                 "Yadda Saxla"

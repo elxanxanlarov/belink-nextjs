@@ -27,12 +27,19 @@ import {
   WhatsAppIcon,
 } from "@/assets/icons";
 
+interface CategoryItem {
+  id: string;
+  name: string;
+}
+
 interface ProductItem {
   id: string;
   title: string;
   price: number;
   imageUrl: string;
   description?: string | null;
+  categoryId?: string | null;
+  category?: CategoryItem | null;
 }
 
 interface UserShopData {
@@ -63,28 +70,45 @@ export default function PublicShopView({ user }: { user: UserShopData }) {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
 
   const rawPhone = user.whatsappPhone || "";
   const cleanPhone = rawPhone.replace(/[^0-9]/g, "");
 
+  const categories = useMemo<CategoryItem[]>(() => {
+    const map = new Map<string, CategoryItem>();
+    for (const p of user.products) {
+      if (p.category) {
+        map.set(p.category.id, p.category);
+      }
+    }
+    return Array.from(map.values());
+  }, [user.products]);
+
   const filteredProducts = useMemo(() => {
-    if (!searchQuery.trim()) return user.products;
-    const q = searchQuery.toLowerCase().trim();
-    return user.products.filter(
-      (p) =>
-        p.title.toLowerCase().includes(q) ||
-        (p.description && p.description.toLowerCase().includes(q))
-    );
-  }, [user.products, searchQuery]);
+    let result = user.products;
+
+    if (activeCategoryId) {
+      result = result.filter((p) => p.categoryId === activeCategoryId);
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter(
+        (p) =>
+          p.title.toLowerCase().includes(q) ||
+          (p.description && p.description.toLowerCase().includes(q))
+      );
+    }
+
+    return result;
+  }, [user.products, searchQuery, activeCategoryId]);
 
   const addToCart = (product: ProductItem) => {
     setCart((prev) => {
       const existing = prev[product.id];
       const newQty = existing ? existing.quantity + 1 : 1;
-      return {
-        ...prev,
-        [product.id]: { product, quantity: newQty },
-      };
+      return { ...prev, [product.id]: { product, quantity: newQty } };
     });
     showToast(`"${product.title}" səbətə əlavə edildi`, "success");
   };
@@ -99,10 +123,7 @@ export default function PublicShopView({ user }: { user: UserShopData }) {
         delete copy[productId];
         return copy;
       }
-      return {
-        ...prev,
-        [productId]: { ...existing, quantity: newQty },
-      };
+      return { ...prev, [productId]: { ...existing, quantity: newQty } };
     });
   };
 
@@ -116,17 +137,11 @@ export default function PublicShopView({ user }: { user: UserShopData }) {
 
   const cartList = Object.values(cart);
   const totalItemsCount = cartList.reduce((sum, item) => sum + item.quantity, 0);
-  const totalPrice = cartList.reduce(
-    (sum, item) => sum + item.product.price * item.quantity,
-    0
-  );
+  const totalPrice = cartList.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
 
   const handleShare = () => {
     if (navigator.share) {
-      navigator.share({
-        title: user.shopName || user.name || "Belink Mağaza",
-        url: window.location.href,
-      });
+      navigator.share({ title: user.shopName || user.name || "Belink Mağaza", url: window.location.href });
     } else {
       navigator.clipboard.writeText(window.location.href);
       setCopied(true);
@@ -151,20 +166,15 @@ export default function PublicShopView({ user }: { user: UserShopData }) {
     let itemsText = cartList
       .map(
         (item, index) =>
-          `${index + 1}. ${item.product.title} - ${item.quantity} ədəd x ${item.product.price} AZN = ${(
-            item.product.price * item.quantity
-          ).toFixed(2)} AZN`
+          `${index + 1}. ${item.product.title} - ${item.quantity} ədəd x ${item.product.price} AZN = ${(item.product.price * item.quantity).toFixed(2)} AZN`
       )
       .join("\n");
 
-    const message = `Salam! Sizin belink.az/${user.username} mağazanızdan sifariş vermək istəyirəm:\n\n🛒 Səbətdəki Məhsullar:\n${itemsText}\n\n💵 Cəmi Məbləğ: ${totalPrice.toFixed(
-      2
-    )} AZN\n\nZəhmət olmasa sifarişi təsdiqləyin.`;
+    const message = `Salam! Sizin belink.az/${user.username} mağazanızdan sifariş vermək istəyirəm:\n\n🛒 Səbətdəki Məhsullar:\n${itemsText}\n\n💵 Cəmi Məbləğ: ${totalPrice.toFixed(2)} AZN\n\nZəhmət olmasa sifarişi təsdiqləyin.`;
 
     const waUrl = cleanPhone
       ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
       : `https://wa.me/?text=${encodeURIComponent(message)}`;
-
     window.open(waUrl, "_blank");
   };
 
@@ -175,48 +185,13 @@ export default function PublicShopView({ user }: { user: UserShopData }) {
   };
 
   const socialLinks = [
-    {
-      name: "WhatsApp",
-      icon: <WhatsAppIcon size={16} className="text-emerald-600" />,
-      url: cleanPhone ? `https://wa.me/${cleanPhone}` : null,
-      color: "hover:text-emerald-700 hover:bg-emerald-50 border-emerald-200",
-    },
-    {
-      name: "Instagram",
-      icon: <InstagramIcon size={16} className="text-pink-600" />,
-      url: user.instagram ? formatSocialUrl(user.instagram, "https://instagram.com/") : null,
-      color: "hover:text-pink-600 hover:bg-pink-50 border-pink-100",
-    },
-    {
-      name: "TikTok",
-      icon: <TikTokIcon size={16} className="text-gray-900" />,
-      url: user.tiktok ? formatSocialUrl(user.tiktok, "https://tiktok.com/@") : null,
-      color: "hover:text-black hover:bg-gray-100 border-gray-200",
-    },
-    {
-      name: "LinkedIn",
-      icon: <LinkedInIcon size={16} className="text-blue-600" />,
-      url: user.linkedin ? formatSocialUrl(user.linkedin, "https://linkedin.com/in/") : null,
-      color: "hover:text-blue-600 hover:bg-blue-50 border-blue-100",
-    },
-    {
-      name: "Twitter",
-      icon: <TwitterIcon size={16} className="text-gray-900" />,
-      url: user.twitter ? formatSocialUrl(user.twitter, "https://x.com/") : null,
-      color: "hover:text-black hover:bg-gray-100 border-gray-200",
-    },
-    {
-      name: "Facebook",
-      icon: <FacebookIcon size={16} className="text-blue-700" />,
-      url: user.facebook ? formatSocialUrl(user.facebook, "https://facebook.com/") : null,
-      color: "hover:text-blue-700 hover:bg-blue-50 border-blue-100",
-    },
-    {
-      name: "YouTube",
-      icon: <YouTubeIcon size={16} className="text-red-600" />,
-      url: user.youtube ? formatSocialUrl(user.youtube, "https://youtube.com/") : null,
-      color: "hover:text-red-600 hover:bg-red-50 border-red-100",
-    },
+    { name: "WhatsApp", icon: <WhatsAppIcon size={16} className="text-emerald-600" />, url: cleanPhone ? `https://wa.me/${cleanPhone}` : null, color: "hover:text-emerald-700 hover:bg-emerald-50 border-emerald-200" },
+    { name: "Instagram", icon: <InstagramIcon size={16} className="text-pink-600" />, url: user.instagram ? formatSocialUrl(user.instagram, "https://instagram.com/") : null, color: "hover:text-pink-600 hover:bg-pink-50 border-pink-100" },
+    { name: "TikTok", icon: <TikTokIcon size={16} className="text-gray-900" />, url: user.tiktok ? formatSocialUrl(user.tiktok, "https://tiktok.com/@") : null, color: "hover:text-black hover:bg-gray-100 border-gray-200" },
+    { name: "LinkedIn", icon: <LinkedInIcon size={16} className="text-blue-600" />, url: user.linkedin ? formatSocialUrl(user.linkedin, "https://linkedin.com/in/") : null, color: "hover:text-blue-600 hover:bg-blue-50 border-blue-100" },
+    { name: "Twitter", icon: <TwitterIcon size={16} className="text-gray-900" />, url: user.twitter ? formatSocialUrl(user.twitter, "https://x.com/") : null, color: "hover:text-black hover:bg-gray-100 border-gray-200" },
+    { name: "Facebook", icon: <FacebookIcon size={16} className="text-blue-700" />, url: user.facebook ? formatSocialUrl(user.facebook, "https://facebook.com/") : null, color: "hover:text-blue-700 hover:bg-blue-50 border-blue-100" },
+    { name: "YouTube", icon: <YouTubeIcon size={16} className="text-red-600" />, url: user.youtube ? formatSocialUrl(user.youtube, "https://youtube.com/") : null, color: "hover:text-red-600 hover:bg-red-50 border-red-100" },
   ].filter((s) => Boolean(s.url));
 
   return (
@@ -259,7 +234,6 @@ export default function PublicShopView({ user }: { user: UserShopData }) {
           <div
             onClick={() => user.image && setPreviewImage(user.image)}
             className="cursor-pointer hover:scale-105 transition-transform"
-            title="Şəklə böyük bax"
           >
             <AvatarImage
               src={user.image}
@@ -342,6 +316,36 @@ export default function PublicShopView({ user }: { user: UserShopData }) {
             </div>
           )}
 
+          {categories.length > 0 && (
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              <button
+                onClick={() => setActiveCategoryId(null)}
+                className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer border ${
+                  activeCategoryId === null
+                    ? "bg-[#1a7a4a] text-white border-[#1a7a4a] shadow-sm"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-[#1a7a4a] hover:text-[#1a7a4a]"
+                }`}
+              >
+                Hamısı
+              </button>
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() =>
+                    setActiveCategoryId((prev) => (prev === cat.id ? null : cat.id))
+                  }
+                  className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer border ${
+                    activeCategoryId === cat.id
+                      ? "bg-[#1a7a4a] text-white border-[#1a7a4a] shadow-sm"
+                      : "bg-white text-gray-600 border-gray-200 hover:border-[#1a7a4a] hover:text-[#1a7a4a]"
+                  }`}
+                >
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+          )}
+
           {user.products.length === 0 ? (
             <div className="bg-white rounded-3xl border border-gray-100 p-12 text-center flex flex-col items-center gap-3">
               <ShoppingBag size={32} className="text-gray-300" />
@@ -352,10 +356,15 @@ export default function PublicShopView({ user }: { user: UserShopData }) {
             <div className="bg-white rounded-3xl border border-gray-100 p-8 text-center flex flex-col items-center gap-2">
               <Search size={24} className="text-gray-300" />
               <p className="text-xs font-bold text-gray-700">
-                &quot;{searchQuery}&quot; üzrə məhsul tapılmadı
+                {searchQuery
+                  ? `"${searchQuery}" üzrə məhsul tapılmadı`
+                  : "Bu kateqoriyada məhsul yoxdur"}
               </p>
               <button
-                onClick={() => setSearchQuery("")}
+                onClick={() => {
+                  setSearchQuery("");
+                  setActiveCategoryId(null);
+                }}
                 className="text-xs text-[#1a7a4a] font-bold hover:underline cursor-pointer"
               >
                 Hamısını göstər
@@ -385,6 +394,11 @@ export default function PublicShopView({ user }: { user: UserShopData }) {
                         <span className="absolute top-2 right-2 bg-white/95 text-[#1a7a4a] font-extrabold text-[11px] sm:text-xs px-2.5 py-1 rounded-full shadow-sm max-w-[100px] truncate">
                           {product.price} ₼
                         </span>
+                        {product.category && (
+                          <span className="absolute bottom-2 left-2 bg-black/50 text-white text-[10px] font-bold px-2 py-0.5 rounded-full truncate max-w-[90%]">
+                            {product.category.name}
+                          </span>
+                        )}
                       </div>
 
                       <div className="min-w-0">
@@ -408,9 +422,7 @@ export default function PublicShopView({ user }: { user: UserShopData }) {
                           >
                             <Minus size={13} strokeWidth={2.5} />
                           </button>
-                          <span className="text-xs font-bold text-[#1a7a4a]">
-                            {inCart.quantity}
-                          </span>
+                          <span className="text-xs font-bold text-[#1a7a4a]">{inCart.quantity}</span>
                           <button
                             onClick={() => updateQuantity(product.id, 1)}
                             className="w-6 h-6 rounded-full bg-[#1a7a4a] text-white flex items-center justify-center shadow-xs hover:bg-[#156040] cursor-pointer"
@@ -504,37 +516,24 @@ export default function PublicShopView({ user }: { user: UserShopData }) {
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-white border border-gray-200 shrink-0">
-                        <Image
-                          src={product.imageUrl}
-                          alt={product.title}
-                          fill
-                          unoptimized
-                          className="object-cover"
-                        />
+                        <Image src={product.imageUrl} alt={product.title} fill unoptimized className="object-cover" />
                       </div>
                       <div className="flex flex-col min-w-0">
-                        <h4 className="text-xs font-bold text-gray-900 truncate">
-                          {product.title}
-                        </h4>
-                        <span className="text-[11px] text-[#1a7a4a] font-bold">
-                          {product.price} AZN
-                        </span>
+                        <h4 className="text-xs font-bold text-gray-900 truncate">{product.title}</h4>
+                        {product.category && (
+                          <span className="text-[10px] text-gray-400">{product.category.name}</span>
+                        )}
+                        <span className="text-[11px] text-[#1a7a4a] font-bold">{product.price} AZN</span>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
                       <div className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-full px-1.5 py-0.5">
-                        <button
-                          onClick={() => updateQuantity(product.id, -1)}
-                          className="w-5 h-5 rounded-full text-gray-600 hover:bg-gray-100 flex items-center justify-center cursor-pointer"
-                        >
+                        <button onClick={() => updateQuantity(product.id, -1)} className="w-5 h-5 rounded-full text-gray-600 hover:bg-gray-100 flex items-center justify-center cursor-pointer">
                           <Minus size={11} />
                         </button>
                         <span className="text-xs font-bold text-gray-800 px-1">{quantity}</span>
-                        <button
-                          onClick={() => updateQuantity(product.id, 1)}
-                          className="w-5 h-5 rounded-full text-gray-600 hover:bg-gray-100 flex items-center justify-center cursor-pointer"
-                        >
+                        <button onClick={() => updateQuantity(product.id, 1)} className="w-5 h-5 rounded-full text-gray-600 hover:bg-gray-100 flex items-center justify-center cursor-pointer">
                           <Plus size={11} />
                         </button>
                       </div>
@@ -556,9 +555,7 @@ export default function PublicShopView({ user }: { user: UserShopData }) {
               <div className="flex flex-col gap-3 pt-3 border-t border-gray-100">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-gray-500">Cəmi Məbləğ:</span>
-                  <span className="text-lg font-black text-[#1a7a4a]">
-                    {totalPrice.toFixed(2)} AZN
-                  </span>
+                  <span className="text-lg font-black text-[#1a7a4a]">{totalPrice.toFixed(2)} AZN</span>
                 </div>
 
                 <button
