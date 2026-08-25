@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { sanitizeUsername } from "@/lib/sanitize";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 export async function POST(req: Request) {
   try {
@@ -12,17 +14,25 @@ export async function POST(req: Request) {
       );
     }
 
-    const body = await req.json();
-    const { username } = body;
-
-    if (!username || typeof username !== "string") {
+    const rateCheck = checkRateLimit(`username_${session.user.id}`, 1000);
+    if (!rateCheck.allowed) {
       return NextResponse.json(
-        { error: "İstifadəçi adı qeyd edilməlidir." },
-        { status: 400 }
+        { error: "Çox tez-tez sorğu göndərirsiniz. Lütfən 1 saniyə gözləyin." },
+        { status: 429 }
       );
     }
 
-    const cleanUsername = username.trim().toLowerCase();
+    const body = await req.json();
+    const { username } = body;
+
+    const cleanUsername = sanitizeUsername(username);
+
+    if (!cleanUsername || cleanUsername.length < 3) {
+      return NextResponse.json(
+        { error: "İstifadəçi adı ən azı 3 simvol olmalıdır." },
+        { status: 400 }
+      );
+    }
 
     if (!/^[a-z0-9_]{3,30}$/.test(cleanUsername)) {
       return NextResponse.json(

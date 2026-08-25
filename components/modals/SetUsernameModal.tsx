@@ -74,6 +74,7 @@ export default function SetUsernameModal() {
             label="İstifadəçi Adı (Username)"
             type="text"
             required
+            maxLength={30}
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder="məs: myshop"

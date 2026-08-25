@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { sanitizePrice, sanitizeText } from "@/lib/sanitize";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 export async function GET() {
   try {
@@ -37,6 +39,14 @@ export async function POST(req: Request) {
       );
     }
 
+    const rateCheck = checkRateLimit(`product_create_${session.user.id}`, 1000);
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: "Çox tez-tez sorğu göndərirsiniz. Lütfən 1 saniyə gözləyin." },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
     const { title, price, imageUrl, description } = body;
 
@@ -47,20 +57,24 @@ export async function POST(req: Request) {
       );
     }
 
-    const numericPrice = parseFloat(price.toString());
-    if (isNaN(numericPrice) || numericPrice < 0) {
+    const cleanTitle = sanitizeText(title, 80);
+    const numericPrice = sanitizePrice(price);
+    const cleanImageUrl = sanitizeText(imageUrl, 500);
+    const cleanDescription = description ? sanitizeText(description, 300) : null;
+
+    if (!cleanTitle) {
       return NextResponse.json(
-        { error: "Qiymət düzgün rəqəm olmalıdır." },
+        { error: "Məhsul adı keçərsizdir." },
         { status: 400 }
       );
     }
 
     const product = await prisma.product.create({
       data: {
-        title: title.trim(),
+        title: cleanTitle,
         price: numericPrice,
-        imageUrl: imageUrl.trim(),
-        description: description ? description.trim() : null,
+        imageUrl: cleanImageUrl,
+        description: cleanDescription,
         userId: session.user.id,
       },
     });

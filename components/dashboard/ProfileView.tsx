@@ -214,6 +214,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         <Input
           label="Ad və Soyad"
           type="text"
+          maxLength={50}
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Adınız"
@@ -222,6 +223,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         <Input
           label="Mağaza Adı"
           type="text"
+          maxLength={50}
           value={shopName}
           onChange={(e) => setShopName(e.target.value)}
           placeholder="məs: Butik Baku"
@@ -231,6 +233,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           <label className="text-xs font-bold text-gray-700">Mağaza Haqqında (Bio)</label>
           <textarea
             rows={3}
+            maxLength={250}
             value={bio}
             onChange={(e) => setBio(e.target.value)}
             placeholder="Qısa məlumat, çatdırılma şərtləri və s."

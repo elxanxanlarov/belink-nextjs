@@ -52,15 +52,15 @@ export default async function UserShopPage({ params }: ShopPageProps) {
             className="border-2 border-emerald-100 shadow-md"
           />
 
-          <div className="flex flex-col gap-1">
-            <h1 className="text-2xl font-black text-gray-900 tracking-tight">
+          <div className="flex flex-col gap-1 min-w-0 max-w-full">
+            <h1 className="text-2xl font-black text-gray-900 tracking-tight break-words max-w-full">
               {user.shopName || user.name || `@${user.username}`}
             </h1>
-            <span className="text-xs font-bold text-[#1a7a4a]">@{user.username}</span>
+            <span className="text-xs font-bold text-[#1a7a4a] truncate max-w-full">@{user.username}</span>
           </div>
 
           {user.bio && (
-            <p className="text-sm text-gray-600 max-w-md leading-relaxed whitespace-pre-line">
+            <p className="text-sm text-gray-600 max-w-md leading-relaxed whitespace-pre-line break-words max-w-full">
               {user.bio}
             </p>
           )}
@@ -88,9 +88,9 @@ export default async function UserShopPage({ params }: ShopPageProps) {
                 return (
                   <div
                     key={product.id}
-                    className="bg-white rounded-3xl border border-gray-100 p-4 shadow-xs flex flex-col justify-between gap-3 group"
+                    className="bg-white rounded-3xl border border-gray-100 p-4 shadow-xs flex flex-col justify-between gap-3 group min-w-0 overflow-hidden"
                   >
-                    <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-3 min-w-0">
                       <div className="relative w-full h-44 rounded-2xl overflow-hidden bg-gray-50 border border-gray-50 flex items-center justify-center">
                         <Image
                           src={product.imageUrl}
@@ -99,15 +99,15 @@ export default async function UserShopPage({ params }: ShopPageProps) {
                           unoptimized
                           className="object-cover group-hover:scale-105 transition-transform duration-300"
                         />
-                        <span className="absolute top-3 right-3 bg-white/90 text-[#1a7a4a] font-extrabold text-xs px-3 py-1.5 rounded-full shadow-sm">
+                        <span className="absolute top-3 right-3 bg-white/90 text-[#1a7a4a] font-extrabold text-xs px-3 py-1.5 rounded-full shadow-sm max-w-[120px] truncate">
                           {product.price} AZN
                         </span>
                       </div>
 
-                      <div>
-                        <h3 className="font-bold text-gray-900 text-sm">{product.title}</h3>
+                      <div className="min-w-0">
+                        <h3 className="font-bold text-gray-900 text-sm break-words line-clamp-2">{product.title}</h3>
                         {product.description && (
-                          <p className="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed">
+                          <p className="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed break-words">
                             {product.description}
                           </p>
                         )}

@@ -5,6 +5,8 @@ import Image from "next/image";
 import { X, Upload, Loader2, Trash2 } from "lucide-react";
 import { DashboardProduct } from "@/types";
 import { Input } from "@/components/ui/Input";
+import ImageCropModal from "@/components/modals/ImageCropModal";
+import { showToast } from "@/lib/swal";
 
 export interface ProductModalProps {
   isOpen: boolean;
@@ -23,7 +25,13 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
-  const [uploadingImage, setUploadingImage] = useState(false);
+
+  // Pending crop & local preview state
+  const [pendingCropSrc, setPendingCropSrc] = useState<string>("");
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [pendingBlob, setPendingBlob] = useState<Blob | null>(null);
+  const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -40,46 +48,40 @@ export const ProductModal: React.FC<ProductModalProps> = ({
       setDescription("");
       setImageUrl("");
     }
+    setPendingBlob(null);
+    setLocalPreviewUrl(null);
     setError("");
   }, [productToEdit, isOpen]);
 
   if (!isOpen) return null;
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // File selection -> open crop modal (do not upload yet!)
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setUploadingImage(true);
-    setError("");
-
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("folder", "products");
-
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Şəkil yüklənmədi.");
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setPendingCropSrc(reader.result);
+        setCropModalOpen(true);
       }
+    };
+    reader.readAsDataURL(file);
 
-      setImageUrl(data.url);
-    } catch (err: any) {
-      setError(err.message || "Şəkil yüklənərkən xəta baş verdi.");
-    } finally {
-      setUploadingImage(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleCropComplete = (blob: Blob, dataUrl: string) => {
+    setPendingBlob(blob);
+    setLocalPreviewUrl(dataUrl);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!imageUrl) {
-      setError("Məhsulun şəklini yükləyin.");
+    const activeImage = localPreviewUrl || imageUrl;
+    if (!activeImage && !pendingBlob) {
+      setError("Məhsulun şəklini seçin.");
       return;
     }
 
@@ -87,6 +89,27 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     setError("");
 
     try {
+      let finalImageUrl = imageUrl;
+
+      // Only upload to Cloudinary when user clicks Save!
+      if (pendingBlob) {
+        const formData = new FormData();
+        formData.append("file", pendingBlob, "product.jpg");
+        formData.append("folder", "products");
+
+        const uploadRes = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        const uploadData = await uploadRes.json();
+        if (!uploadRes.ok) {
+          throw new Error(uploadData.error || "Şəkil bulud yaddaşına yüklənmədi.");
+        }
+
+        finalImageUrl = uploadData.url;
+      }
+
       const url = productToEdit ? `/api/products/${productToEdit.id}` : "/api/products";
       const method = productToEdit ? "PUT" : "POST";
 
@@ -96,7 +119,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
         body: JSON.stringify({
           title,
           price: parseFloat(price),
-          imageUrl,
+          imageUrl: finalImageUrl,
           description,
         }),
       });
@@ -106,6 +129,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
         throw new Error(data.error || "Əməliyyat uğursuz oldu.");
       }
 
+      showToast(productToEdit ? "Məhsul yeniləndi" : "Məhsul əlavə edildi", "success");
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -115,8 +139,17 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     }
   };
 
+  const displayImage = localPreviewUrl || imageUrl;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <ImageCropModal
+        isOpen={cropModalOpen}
+        onClose={() => setCropModalOpen(false)}
+        imageSrc={pendingCropSrc}
+        onCropComplete={handleCropComplete}
+      />
+
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg p-6 sm:p-8 flex flex-col gap-6 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
         <div className="flex items-center justify-between">
@@ -150,13 +183,13 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               type="file"
               accept="image/*"
               className="hidden"
-              onChange={handleImageUpload}
+              onChange={handleFileSelect}
             />
 
-            {imageUrl ? (
+            {displayImage ? (
               <div className="relative w-full h-48 rounded-2xl overflow-hidden border border-gray-100 group bg-gray-50 flex items-center justify-center">
                 <Image
-                  src={imageUrl}
+                  src={displayImage}
                   alt="Product preview"
                   fill
                   unoptimized
@@ -166,14 +199,18 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="px-4 py-2 rounded-full bg-white text-gray-800 font-bold text-xs shadow-md hover:bg-gray-100 transition-colors"
+                    className="px-4 py-2 rounded-full bg-white text-gray-800 font-bold text-xs shadow-md hover:bg-gray-100 transition-colors cursor-pointer"
                   >
                     Dəyiş
                   </button>
                   <button
                     type="button"
-                    onClick={() => setImageUrl("")}
-                    className="p-2 rounded-full bg-red-600 text-white shadow-md hover:bg-red-700 transition-colors"
+                    onClick={() => {
+                      setImageUrl("");
+                      setLocalPreviewUrl(null);
+                      setPendingBlob(null);
+                    }}
+                    className="p-2 rounded-full bg-red-600 text-white shadow-md hover:bg-red-700 transition-colors cursor-pointer"
                   >
                     <Trash2 size={16} />
                   </button>
@@ -183,17 +220,10 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingImage}
-                className="w-full h-40 rounded-2xl border-2 border-dashed border-gray-200 hover:border-[#1a7a4a] bg-gray-50/50 hover:bg-emerald-50/30 flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-[#1a7a4a] transition-all cursor-pointer disabled:opacity-50"
+                className="w-full h-40 rounded-2xl border-2 border-dashed border-gray-200 hover:border-[#1a7a4a] bg-gray-50/50 hover:bg-emerald-50/30 flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-[#1a7a4a] transition-all cursor-pointer"
               >
-                {uploadingImage ? (
-                  <Loader2 size={24} className="animate-spin text-[#1a7a4a]" />
-                ) : (
-                  <>
-                    <Upload size={24} />
-                    <span className="text-xs font-semibold">Şəkil seçin və ya yükləyin (Cloudinary)</span>
-                  </>
-                )}
+                <Upload size={24} />
+                <span className="text-xs font-semibold">Şəkil seçin (Seçildikdən sonra kəsiləcək)</span>
               </button>
             )}
           </div>
@@ -202,6 +232,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             label="Məhsulun Adı"
             type="text"
             required
+            maxLength={80}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="məs: Qara Dəri Çanta"
@@ -212,6 +243,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             type="number"
             step="0.01"
             required
+            maxLength={10}
             value={price}
             onChange={(e) => setPrice(e.target.value)}
             placeholder="məs: 45.00"
@@ -221,6 +253,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             <label className="text-xs font-bold text-gray-700">Təsvir (İxtiyari)</label>
             <textarea
               rows={3}
+              maxLength={300}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Məhsul haqqında qısa məlumat..."
@@ -232,16 +265,22 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-3 rounded-full border border-gray-200 text-gray-700 font-bold text-sm hover:bg-gray-50 transition-colors"
+              className="flex-1 py-3 rounded-full border border-gray-200 text-gray-700 font-bold text-sm hover:bg-gray-50 transition-colors cursor-pointer"
             >
               Ləğv et
             </button>
             <button
               type="submit"
-              disabled={submitting || uploadingImage}
-              className="flex-1 py-3 rounded-full bg-[#1a7a4a] hover:bg-[#156040] text-white font-bold text-sm transition-all shadow-md shadow-emerald-200 disabled:opacity-50 flex items-center justify-center gap-2"
+              disabled={submitting}
+              className="flex-1 py-3 rounded-full bg-[#1a7a4a] hover:bg-[#156040] text-white font-bold text-sm transition-all shadow-md shadow-emerald-200 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
             >
-              {submitting ? <Loader2 size={18} className="animate-spin" /> : productToEdit ? "Yadda Saxla" : "Əlavə Et"}
+              {submitting ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" /> Yüklənir...
+                </>
+              ) : (
+                "Yadda Saxla"
+              )}
             </button>
           </div>
         </form>
