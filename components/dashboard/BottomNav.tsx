@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { Home, Plus, User, ExternalLink } from "lucide-react";
+import { Home, Plus, User, ExternalLink, ShoppingBag } from "lucide-react";
 import { DashboardTab } from "@/types";
 
 export interface BottomNavProps {
@@ -20,6 +20,16 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 }) => {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-100 flex md:hidden items-end justify-around px-2 pb-3 pt-1 safe-bottom shadow-lg select-none">
+      {/* 1. Ana səhifə (Yönləndirir /) */}
+      <Link
+        href="/"
+        className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold text-gray-400 hover:text-gray-600 transition-all"
+      >
+        <Home size={21} strokeWidth={1.8} />
+        <span>Ana səhifə</span>
+      </Link>
+
+      {/* 2. Məhsullarım (Tab: products) */}
       <button
         onClick={() => onTabChange("products")}
         className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all cursor-pointer ${
@@ -28,10 +38,11 @@ export const BottomNav: React.FC<BottomNavProps> = ({
             : "text-gray-400 hover:text-gray-600"
         }`}
       >
-        <Home size={21} strokeWidth={activeTab === "products" ? 2.5 : 1.8} />
-        <span>Ana səhifə</span>
+        <ShoppingBag size={21} strokeWidth={activeTab === "products" ? 2.5 : 1.8} />
+        <span>Məhsullarım</span>
       </button>
 
+      {/* 3. Ortada + (Əlavə et modalı) */}
       <div className="relative flex flex-col items-center -mt-5">
         <button
           onClick={onOpenAddModal}
@@ -43,6 +54,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         <span className="text-[10px] font-bold text-[#1a7a4a] mt-1">Əlavə et</span>
       </div>
 
+      {/* 4. Profilim (Tab: profile) */}
       <button
         onClick={() => onTabChange("profile")}
         className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all cursor-pointer ${
@@ -55,6 +67,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         <span>Profilim</span>
       </button>
 
+      {/* 5. Mağazam (Yönləndirir /:username) */}
       {username && (
         <Link
           href={`/${username}`}
