@@ -21,16 +21,39 @@ export const ProductList: React.FC<ProductListProps> = ({
   onAdd,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+
+  // Extract unique categories
+  const categories = useMemo(() => {
+    const map = new Map<string, { id: string; name: string }>();
+    products.forEach((p) => {
+      if (p.category) {
+        map.set(p.category.id, { id: p.category.id, name: p.category.name });
+      }
+    });
+    return Array.from(map.values());
+  }, [products]);
 
   const filteredProducts = useMemo(() => {
-    if (!searchQuery.trim()) return products;
-    const q = searchQuery.toLowerCase().trim();
-    return products.filter(
-      (p) =>
-        p.title.toLowerCase().includes(q) ||
-        (p.description && p.description.toLowerCase().includes(q))
-    );
-  }, [products, searchQuery]);
+    let result = products;
+
+    // Filter by category
+    if (selectedCategoryId) {
+      result = result.filter((p) => p.categoryId === selectedCategoryId);
+    }
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter(
+        (p) =>
+          p.title.toLowerCase().includes(q) ||
+          (p.description && p.description.toLowerCase().includes(q))
+      );
+    }
+
+    return result;
+  }, [products, searchQuery, selectedCategoryId]);
 
   if (loading) {
     return (
@@ -98,14 +121,55 @@ export const ProductList: React.FC<ProductListProps> = ({
         )}
       </div>
 
+      {/* Category Filter */}
+      {categories.length > 0 && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          <button
+            onClick={() => setSelectedCategoryId(null)}
+            className={`shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer border ${
+              selectedCategoryId === null
+                ? "bg-[#1a7a4a] text-white border-[#1a7a4a] shadow-sm"
+                : "bg-white text-gray-600 border-gray-200 hover:border-[#1a7a4a] hover:text-[#1a7a4a]"
+            }`}
+          >
+            Hamısı ({products.length})
+          </button>
+          {categories.map((cat) => {
+            const count = products.filter((p) => p.categoryId === cat.id).length;
+            return (
+              <button
+                key={cat.id}
+                onClick={() =>
+                  setSelectedCategoryId((prev) => (prev === cat.id ? null : cat.id))
+                }
+                className={`shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer border ${
+                  selectedCategoryId === cat.id
+                    ? "bg-[#1a7a4a] text-white border-[#1a7a4a] shadow-sm"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-[#1a7a4a] hover:text-[#1a7a4a]"
+                }`}
+              >
+                {cat.name} ({count})
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {filteredProducts.length === 0 ? (
         <div className="bg-white rounded-3xl border border-gray-100 p-10 text-center flex flex-col items-center gap-3">
           <Search size={28} className="text-gray-300" />
           <h4 className="font-bold text-gray-800 text-sm">
-            &quot;{searchQuery}&quot; üzrə heç bir məhsul tapılmadı
+            {searchQuery
+              ? `"${searchQuery}" üzrə heç bir məhsul tapılmadı`
+              : selectedCategoryId
+              ? "Bu kateqoriyada heç bir məhsul yoxdur"
+              : "Heç bir məhsul tapılmadı"}
           </h4>
           <button
-            onClick={() => setSearchQuery("")}
+            onClick={() => {
+              setSearchQuery("");
+              setSelectedCategoryId(null);
+            }}
             className="text-xs font-bold text-[#1a7a4a] hover:underline cursor-pointer"
           >
             Bütün məhsulları göstər
