@@ -49,7 +49,8 @@ export const ProductModal: React.FC<ProductModalProps> = ({
         allImages.map((url, i) => ({
           id: `existing-${i}`,
           url,
-          isCover: url === productToEdit.imageUrl || i === 0,
+          isCover: url === productToEdit.imageUrl, // Yalnız imageUrl ilə müqayisə et
+          isUploaded: true,
         }))
       );
     } else {
@@ -81,9 +82,33 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     setError("");
 
     try {
-      const coverImg = uploadedImages.find((img) => img.isCover) || uploadedImages[0];
-      const imageUrls = uploadedImages.map((img) => img.url);
+      // 1. Yüklənməmiş şəkilləri yüklə
+      const uploadedImageUrls: string[] = [];
+      
+      for (const img of uploadedImages) {
+        if (img.isUploaded) {
+          // Artıq yüklənmiş şəkil
+          uploadedImageUrls.push(img.url);
+        } else if (img.blob) {
+          // Yeni şəkil - indi yüklə
+          const formData = new FormData();
+          formData.append("file", img.blob, "product.jpg");
+          formData.append("folder", "products");
 
+          const res = await fetch("/api/upload", { method: "POST", body: formData });
+          const data = await res.json();
+          
+          if (!res.ok) throw new Error(data.error || "Şəkil yükləmə xətası");
+          
+          uploadedImageUrls.push(data.url);
+        }
+      }
+
+      // 2. Cover şəklin URL-ini tap
+      const coverIndex = uploadedImages.findIndex((img) => img.isCover);
+      const coverImgUrl = uploadedImageUrls[coverIndex] || uploadedImageUrls[0];
+
+      // 3. Məhsulu yarat/yenilə
       const url = productToEdit ? `/api/products/${productToEdit.id}` : "/api/products";
       const method = productToEdit ? "PUT" : "POST";
 
@@ -93,8 +118,8 @@ export const ProductModal: React.FC<ProductModalProps> = ({
         body: JSON.stringify({
           title,
           price: parseFloat(price),
-          imageUrl: coverImg.url,
-          images: imageUrls,
+          imageUrl: coverImgUrl,
+          images: uploadedImageUrls,
           description,
           categoryId,
         }),
@@ -209,7 +234,8 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             >
               {submitting ? (
                 <>
-                  <Loader2 size={16} className="animate-spin" /> Saxlanılır...
+                  <Loader2 size={16} className="animate-spin" /> 
+                  {uploadedImages.some(img => !img.isUploaded) ? "Şəkillər yüklənir..." : "Saxlanılır..."}
                 </>
               ) : (
                 "Yadda Saxla"

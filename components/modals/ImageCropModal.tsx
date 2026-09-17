@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import ReactCrop, { Crop, PixelCrop, centerCrop, makeAspectCrop } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
 import { X, Check, ZoomIn, ZoomOut, RotateCw, RefreshCcw } from "lucide-react";
@@ -14,6 +14,10 @@ interface ImageCropModalProps {
   circular?: boolean;
   /** Optional fixed aspect ratio (e.g. 1 for square, 4/3 for product). Undefined = free */
   aspect?: number;
+  /** Edit mode - shows "Change Image" button */
+  isEditMode?: boolean;
+  /** Callback when user wants to change the image in edit mode */
+  onChangeImage?: () => void;
 }
 
 export default function ImageCropModal({
@@ -23,13 +27,38 @@ export default function ImageCropModal({
   onCropComplete,
   circular = false,
   aspect,
+  isEditMode = false,
+  onChangeImage,
 }: ImageCropModalProps) {
   const imgRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [crop, setCrop] = useState<Crop>();
+  const [crop, setCrop] = useState<Crop>({
+    unit: "%",
+    x: 5,
+    y: 5,
+    width: 90,
+    height: 90,
+  });
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
   const [scale, setScale] = useState(1);
   const [rotate, setRotate] = useState(0);
+
+  // Reset state when imageSrc changes
+  useEffect(() => {
+    if (isOpen && imageSrc) {
+      setScale(1);
+      setRotate(0);
+      // Reset crop to default
+      setCrop({
+        unit: "%",
+        x: 5,
+        y: 5,
+        width: 90,
+        height: 90,
+      });
+      setCompletedCrop(undefined);
+    }
+  }, [imageSrc, isOpen]);
 
   const handleZoomIn = useCallback(() => {
     setScale((prev) => Math.min(prev + 0.1, 3));
@@ -75,20 +104,28 @@ export default function ImageCropModal({
   }, [effectiveAspect]);
 
   const getCroppedImg = useCallback(async () => {
-    if (!imgRef.current || !completedCrop) return;
+    if (!imgRef.current) return;
 
     const image = imgRef.current;
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    // Əgər crop edilməyibsə, tam şəkli al
+    const cropToUse = completedCrop || {
+      x: 0,
+      y: 0,
+      width: image.width,
+      height: image.height,
+    };
+
     const scaleX = image.naturalWidth / image.width;
     const scaleY = image.naturalHeight / image.height;
 
     // Calculate dimensions considering rotation
     const rotRad = (rotate * Math.PI) / 180;
-    const cropWidth = completedCrop.width * scaleX;
-    const cropHeight = completedCrop.height * scaleY;
+    const cropWidth = cropToUse.width * scaleX;
+    const cropHeight = cropToUse.height * scaleY;
 
     // Set canvas size
     if (rotate === 90 || rotate === 270) {
@@ -108,8 +145,8 @@ export default function ImageCropModal({
 
     ctx.drawImage(
       image,
-      completedCrop.x * scaleX,
-      completedCrop.y * scaleY,
+      cropToUse.x * scaleX,
+      cropToUse.y * scaleY,
       cropWidth,
       cropHeight,
       0,
@@ -141,12 +178,12 @@ export default function ImageCropModal({
       const cropped = await getCroppedImg();
       if (cropped) {
         onCropComplete(cropped.blob, cropped.dataUrl);
-        onClose();
+        // onClose artıq MultiImageUpload-da idarə olunur
       }
     } catch (error) {
       console.error("Crop error:", error);
     }
-  }, [getCroppedImg, onCropComplete, onClose]);
+  }, [getCroppedImg, onCropComplete]);
 
   if (!isOpen || !imageSrc) return null;
 
@@ -156,7 +193,9 @@ export default function ImageCropModal({
       <div className="relative bg-white rounded-3xl shadow-2xl overflow-hidden max-w-2xl w-full p-6 flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200 z-10 max-h-[95vh]">
         <div className="flex items-center justify-between border-b border-gray-100 pb-3">
           <div>
-            <h3 className="font-extrabold text-gray-900 text-base">Şəkli Redaktə Et</h3>
+            <h3 className="font-extrabold text-gray-900 text-base">
+              {isEditMode ? "Şəkli Redaktə Et" : "Şəkli Kəs"}
+            </h3>
             <p className="text-xs text-gray-400 mt-0.5">
               {circular ? "Dairəvi kəsim (profil şəkli)" : "İstədiyiniz hissəni seçin və zoom/rotate edin"}
             </p>
@@ -240,6 +279,15 @@ export default function ImageCropModal({
         </div>
 
         <div className="flex items-center justify-end gap-3 pt-2 border-t border-gray-100">
+          {isEditMode && onChangeImage && (
+            <button
+              type="button"
+              onClick={onChangeImage}
+              className="px-5 py-2.5 rounded-full text-xs font-bold text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer"
+            >
+              Şəkli Dəyişdir
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}
@@ -250,8 +298,7 @@ export default function ImageCropModal({
           <button
             type="button"
             onClick={handleConfirm}
-            disabled={!completedCrop}
-            className="px-6 py-2.5 rounded-full text-xs font-bold bg-[#1a7a4a] hover:bg-[#156040] text-white shadow-md transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2.5 rounded-full text-xs font-bold bg-[#1a7a4a] hover:bg-[#156040] text-white shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <Check size={16} /> Təsdiqlə
           </button>

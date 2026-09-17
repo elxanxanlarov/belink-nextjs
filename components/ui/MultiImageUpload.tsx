@@ -2,7 +2,7 @@
 
 import React, { useRef, useState } from "react";
 import Image from "next/image";
-import { Upload, X, Star, Loader2, Plus } from "lucide-react";
+import { Upload, X, Star, Plus, Edit2, ImageIcon } from "lucide-react";
 import ImageCropModal from "@/components/modals/ImageCropModal";
 import { showToast } from "@/lib/swal";
 
@@ -10,9 +10,9 @@ export interface UploadedImage {
   id: string;
   url: string;
   isCover: boolean;
+  blob?: Blob;
+  isUploaded?: boolean;
 }
-
-// dd
 
 interface MultiImageUploadProps {
   images: UploadedImage[];
@@ -30,9 +30,12 @@ export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
   productId,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [pendingCropSrc, setPendingCropSrc] = useState("");
+  const editFileInputRef = useRef<HTMLInputElement>(null);
+  const [pendingFiles, setPendingFiles] = useState<string[]>([]);
+  const [currentCropIndex, setCurrentCropIndex] = useState(0);
   const [cropOpen, setCropOpen] = useState(false);
-  const [uploadingCount, setUploadingCount] = useState(0);
+  const [editingImageId, setEditingImageId] = useState<string | null>(null); // Hansı şəkil edit olunur
+  const [editingImageSrc, setEditingImageSrc] = useState<string>(""); // Edit olunan şəklin source
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -44,14 +47,19 @@ export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
       return;
     }
 
-    const toProcess = files.slice(0, remaining);
+    const toProcess = files.slice(0, maxImages - images.length);
+    const fileUrls: string[] = [];
 
     toProcess.forEach((file) => {
       const reader = new FileReader();
       reader.onload = () => {
         if (typeof reader.result === "string") {
-          setPendingCropSrc(reader.result);
-          setCropOpen(true);
+          fileUrls.push(reader.result);
+          if (fileUrls.length === toProcess.length) {
+            setPendingFiles(fileUrls);
+            setCurrentCropIndex(0);
+            setCropOpen(true);
+          }
         }
       };
       reader.readAsDataURL(file);
@@ -60,31 +68,80 @@ export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const handleCropComplete = async (blob: Blob, _dataUrl: string) => {
-    setCropOpen(false);
+  const handleEditFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length || !editingImageId) return;
 
-    setUploadingCount((c) => c + 1);
-    try {
-      const formData = new FormData();
-      formData.append("file", blob, "product.jpg");
-      formData.append("folder", "products");
+    const file = files[0];
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setEditingImageSrc(reader.result);
+        setPendingFiles([reader.result]);
+        setCurrentCropIndex(0);
+        setCropOpen(true);
+      }
+    };
+    reader.readAsDataURL(file);
 
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Yükləmə xətası");
+    if (editFileInputRef.current) editFileInputRef.current.value = "";
+  };
 
-      const isFirst = images.length === 0;
+  const handleCropComplete = (blob: Blob, dataUrl: string) => {
+    if (editingImageId) {
+      // Şəkil dəyişdirilir - köhnəsini yenilə (cover statusunu saxla)
+      const updatedImages = images.map((img) =>
+        img.id === editingImageId
+          ? { ...img, url: dataUrl, blob: blob, isUploaded: false }
+          : img
+      );
+      onChange(updatedImages);
+      setEditingImageId(null);
+      setEditingImageSrc("");
+      setCropOpen(false);
+      setPendingFiles([]);
+      setCurrentCropIndex(0);
+    } else {
+      // Yeni şəkil əlavə edilir
+      const isFirst = images.length === 0 && currentCropIndex === 0;
       const newImg: UploadedImage = {
         id: crypto.randomUUID(),
-        url: data.url,
+        url: dataUrl,
         isCover: isFirst,
+        blob: blob,
+        isUploaded: false,
       };
       onChange([...images, newImg]);
-    } catch (err: any) {
-      showToast(err.message || "Şəkil yüklənmədi", "error");
-    } finally {
-      setUploadingCount((c) => c - 1);
+
+      // Növbəti şəkilə keç
+      if (currentCropIndex < pendingFiles.length - 1) {
+        setCurrentCropIndex(currentCropIndex + 1);
+      } else {
+        // Hamısı bitdi
+        setCropOpen(false);
+        setPendingFiles([]);
+        setCurrentCropIndex(0);
+      }
     }
+  };
+
+  const handleCropSkip = () => {
+    // Bu şəkli skip et
+    if (currentCropIndex < pendingFiles.length - 1) {
+      setCurrentCropIndex(currentCropIndex + 1);
+    } else {
+      setCropOpen(false);
+      setPendingFiles([]);
+      setCurrentCropIndex(0);
+    }
+  };
+
+  const handleCropCancel = () => {
+    setCropOpen(false);
+    setPendingFiles([]);
+    setCurrentCropIndex(0);
+    setEditingImageId(null); // Edit mode-dan çıx
+    setEditingImageSrc("");
   };
 
   const setCover = (id: string) => {
@@ -108,22 +165,59 @@ export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
     }
   };
 
+  const handleEditImage = (imageId: string) => {
+    // Mövcud şəkli tap və crop modal aç
+    const imageToEdit = images.find(img => img.id === imageId);
+    if (!imageToEdit) return;
+    
+    setEditingImageId(imageId);
+    setEditingImageSrc(imageToEdit.url);
+    setPendingFiles([imageToEdit.url]);
+    setCurrentCropIndex(0);
+    setCropOpen(true);
+  };
+
+  const handleChangeImageInEdit = () => {
+    // Edit modaldan "Şəkli Dəyişdir" buttonuna click edəndə
+    editFileInputRef.current?.click();
+  };
+
   const coverImage = images.find((img) => img.isCover);
 
   return (
     <div className="flex flex-col gap-3">
       <ImageCropModal
         isOpen={cropOpen}
-        onClose={() => setCropOpen(false)}
-        imageSrc={pendingCropSrc}
+        onClose={handleCropCancel}
+        imageSrc={pendingFiles[currentCropIndex] || ""}
         onCropComplete={handleCropComplete}
+        isEditMode={!!editingImageId}
+        onChangeImage={handleChangeImageInEdit}
       />
+
+      {/* Crop Progress */}
+      {cropOpen && pendingFiles.length > 1 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ImageIcon size={18} className="text-blue-600" />
+            <span className="text-xs font-bold text-blue-900">
+              Şəkil {currentCropIndex + 1} / {pendingFiles.length}
+            </span>
+          </div>
+          <button
+            onClick={handleCropSkip}
+            className="text-xs font-bold text-blue-600 hover:underline cursor-pointer"
+          >
+            Bu şəkli keç
+          </button>
+        </div>
+      )}
 
       <div className="flex items-center justify-between">
         <label className="text-xs font-bold text-gray-700">
           Məhsul Şəkilləri
           <span className="text-gray-400 font-normal ml-1">
-            (maksimum {maxImages} şəkil, ilk şəkil avtomatik cover olur)
+            (maksimum {maxImages} şəkil)
           </span>
         </label>
         {images.length > 0 && (
@@ -142,7 +236,15 @@ export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
         onChange={handleFileSelect}
       />
 
-      {images.length === 0 && uploadingCount === 0 ? (
+      <input
+        ref={editFileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleEditFileSelect}
+      />
+
+      {images.length === 0 ? (
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
@@ -154,85 +256,99 @@ export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
         </button>
       ) : (
         <div className="flex flex-col gap-3">
+          {/* Cover Image */}
           {coverImage && (
-            <div className="relative w-full h-52 rounded-2xl overflow-hidden border-2 border-[#1a7a4a] bg-gray-50 group">
+            <div className="relative w-full h-64 rounded-2xl overflow-hidden border-2 border-[#1a7a4a] bg-gray-50 group">
               <Image src={coverImage.url} alt="Cover şəkli" fill unoptimized className="object-contain" />
-              <div className="absolute top-2 left-2 bg-[#1a7a4a] text-white text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
-                <Star size={10} className="fill-white" /> Cover
+              
+              {/* Cover Badge */}
+              <div className="absolute top-3 left-3 bg-[#1a7a4a] text-white text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-md">
+                <Star size={10} className="fill-white" /> Cover Şəkil
               </div>
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                {images.length < maxImages && (
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="px-4 py-2 rounded-full bg-white text-gray-800 font-bold text-xs shadow-md hover:bg-gray-100 cursor-pointer flex items-center gap-1.5"
-                  >
-                    <Plus size={13} /> Şəkil əlavə et
-                  </button>
-                )}
+
+              {/* Hover Actions */}
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <button
+                  type="button"
+                  onClick={() => handleEditImage(coverImage.id)}
+                  className="px-5 py-3 rounded-full bg-white text-gray-800 font-bold text-sm shadow-md hover:bg-gray-100 cursor-pointer flex items-center gap-2"
+                >
+                  <Edit2 size={18} /> Şəkli Dəyişdir
+                </button>
               </div>
             </div>
           )}
 
-          <div className="grid grid-cols-4 gap-2">
+          {/* Thumbnail Grid */}
+          <div className="grid grid-cols-4 gap-2.5">
             {images.map((img) => (
               <div
                 key={img.id}
-                className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all group cursor-pointer ${
-                  img.isCover ? "border-[#1a7a4a]" : "border-gray-200 hover:border-gray-400"
+                className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all group ${
+                  img.isCover ? "border-[#1a7a4a] ring-2 ring-[#1a7a4a] ring-offset-2" : "border-gray-200 hover:border-gray-400 cursor-pointer"
                 }`}
                 onClick={() => !img.isCover && setCover(img.id)}
               >
                 <Image src={img.url} alt="Product image" fill unoptimized className="object-cover" />
 
+                {/* Cover indicator */}
                 {img.isCover && (
-                  <div className="absolute bottom-0.5 left-0.5 bg-[#1a7a4a] rounded-full p-0.5">
-                    <Star size={9} className="fill-white text-white" />
+                  <div className="absolute bottom-1 left-1 bg-[#1a7a4a] rounded-full p-1 z-10">
+                    <Star size={8} className="fill-white text-white" />
                   </div>
                 )}
 
-                {!img.isCover && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeImage(img.id, img.url);
-                    }}
-                    className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-md"
-                  >
-                    <X size={10} />
-                  </button>
-                )}
+                {/* Edit button - həm cover həm də digər şəkillər üçün */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEditImage(img.id);
+                  }}
+                  className="absolute top-1 left-1 w-6 h-6 rounded-full bg-white/90 text-gray-700 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-md hover:bg-white z-20"
+                  title="Şəkli Dəyişdir"
+                >
+                  <Edit2 size={12} />
+                </button>
 
+                {/* Delete button - bütün şəkillər üçün (amma ən azı 1 şəkil qalmalıdır) */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeImage(img.id, img.url);
+                  }}
+                  className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-md hover:bg-red-700 z-20"
+                  title="Sil"
+                >
+                  <X size={12} />
+                </button>
+
+                {/* "Cover et" overlay - yalnız cover olmayan şəkillər üçün */}
                 {!img.isCover && (
-                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 pointer-events-none">
                     <span className="text-[9px] text-white font-bold">Cover et</span>
                   </div>
                 )}
               </div>
             ))}
 
-            {Array.from({ length: uploadingCount }).map((_, i) => (
-              <div key={`uploading-${i}`} className="relative aspect-square rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center">
-                <Loader2 size={18} className="animate-spin text-gray-400" />
-              </div>
-            ))}
-
-            {images.length + uploadingCount < maxImages && (
+            {/* Add more button */}
+            {images.length < maxImages && (
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="aspect-square rounded-xl border-2 border-dashed border-gray-200 hover:border-[#1a7a4a] bg-gray-50 hover:bg-emerald-50/30 flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-[#1a7a4a] transition-all cursor-pointer"
               >
-                <Plus size={18} />
-                <span className="text-[10px] font-semibold">Əlavə et</span>
+                <Plus size={20} />
+                <span className="text-[9px] font-bold">Əlavə et</span>
               </button>
             )}
           </div>
 
           {images.length > 1 && (
             <p className="text-[11px] text-gray-400 text-center">
-              Şəkil üzərinə klikləyin → cover olaraq seçin
+              💡 Şəkil üzərinə klikləyin və cover olaraq təyin edin
             </p>
           )}
         </div>
