@@ -9,7 +9,8 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminStats } from "@/components/admin/AdminStats";
 import { CustomersTable } from "@/components/admin/CustomersTable";
 import { AdminStatsView } from "@/components/admin/AdminStatsView";
-import { confirmLogout } from "@/lib/swal";
+import { FeaturedShopsManager } from "@/components/admin/FeaturedShopsManager";
+import { confirmLogout, showToast } from "@/lib/swal";
 
 export interface AdminClientPageProps {
   secretId: string;
@@ -65,6 +66,71 @@ export const AdminClientPage: React.FC<AdminClientPageProps> = ({ secretId }) =>
     setCurrentStaff(null);
   };
 
+  const handleFeaturedChange = async (orderedIds: string[]) => {
+    const previous = customers;
+    const orderById = new Map(orderedIds.map((id, index) => [id, index]));
+    const added = orderedIds.length > previous.filter((c) => c.isFeatured).length;
+    const removed = orderedIds.length < previous.filter((c) => c.isFeatured).length;
+
+    setCustomers((prev) =>
+      prev.map((c) => {
+        const order = orderById.get(c.id);
+        return { ...c, isFeatured: order !== undefined, featuredOrder: order ?? null };
+      })
+    );
+
+    try {
+      const res = await fetch("/api/admin/featured-shops", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: orderedIds }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Dəyişikliyi yadda saxlamaq mümkün olmadı.");
+      }
+      showToast(
+        added
+          ? "Mağaza ana səhifəyə əlavə edildi"
+          : removed
+            ? "Mağaza ana səhifədən çıxarıldı"
+            : "Sıralama yadda saxlanıldı",
+        "success"
+      );
+    } catch (error) {
+      setCustomers(previous);
+      showToast(
+        error instanceof Error ? error.message : "Dəyişikliyi yadda saxlamaq mümkün olmadı.",
+        "error"
+      );
+    }
+  };
+
+  const handleTogglePremium = async (id: string, isPremium: boolean) => {
+    const setPremium = (value: boolean) =>
+      setCustomers((prev) => prev.map((c) => (c.id === id ? { ...c, isPremium: value } : c)));
+
+    setPremium(isPremium);
+    try {
+      const res = await fetch(`/api/admin/customers/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isPremium }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Dəyişikliyi yadda saxlamaq mümkün olmadı.");
+      }
+      showToast(isPremium ? "Mağaza premium edildi" : "Premium söndürüldü", "success");
+    } catch (error) {
+      setPremium(!isPremium);
+      showToast(
+        error instanceof Error ? error.message : "Dəyişikliyi yadda saxlamaq mümkün olmadı.",
+        "error"
+      );
+    }
+  };
+
   if (loadingData) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50/40 flex items-center justify-center p-4">
@@ -110,7 +176,12 @@ export const AdminClientPage: React.FC<AdminClientPageProps> = ({ secretId }) =>
               customers={customers}
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
+              onTogglePremium={handleTogglePremium}
             />
+          )}
+
+          {activeTab === "homeShops" && (
+            <FeaturedShopsManager customers={customers} onChange={handleFeaturedChange} />
           )}
 
           {activeTab === "stats" && <AdminStatsView currentStaff={currentStaff} />}

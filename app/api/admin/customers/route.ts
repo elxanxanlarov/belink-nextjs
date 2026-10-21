@@ -35,6 +35,10 @@ export async function GET(req: NextRequest) {
       username: u.username,
       shopName: u.shopName,
       bio: u.bio,
+      isFeatured: u.isFeatured ?? false,
+      isPremium: u.isPremium ?? false,
+      shopTemplate: u.shopTemplate,
+      featuredOrder: u.featuredOrder ?? null,
       productCount: u._count.products,
       createdAt: u.createdAt.toISOString(),
     }));

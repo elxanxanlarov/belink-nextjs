@@ -20,7 +20,11 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
           <Menu size={20} />
         </button>
         <h1 className="text-lg font-extrabold text-gray-900">
-          {activeTab === "customers" ? "Müştərilərin İdarə Edilməsi" : "Ümumi Statistika"}
+          {activeTab === "customers"
+            ? "Müştərilərin İdarə Edilməsi"
+            : activeTab === "homeShops"
+              ? "Ana Səhifə Mağazaları"
+              : "Ümumi Statistika"}
         </h1>
       </div>
 

@@ -3,6 +3,10 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sanitizeText } from "@/lib/sanitize";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { MAX_SHOP_BANNERS, getShopTemplate, isShopPaletteId, isShopTemplateId } from "@/data/shopTemplates";
+
+const isBannerUrl = (value: unknown): value is string =>
+  typeof value === "string" && value.length <= 500 && value.startsWith("https://res.cloudinary.com/");
 
 export async function GET() {
   try {
@@ -36,6 +40,10 @@ export async function GET() {
         twitter: user.twitter,
         facebook: user.facebook,
         youtube: user.youtube,
+        isPremium: user.isPremium,
+        shopTemplate: user.shopTemplate,
+        shopPalette: user.shopPalette,
+        banners: user.banners,
         productCount: user._count.products,
       },
     });
@@ -62,6 +70,41 @@ export async function PATCH(req: Request) {
 
     const body = await req.json();
     const { name, shopName, bio, image, whatsappPhone, instagram, tiktok, linkedin, twitter, facebook, youtube } = body;
+    const { shopTemplate, shopPalette, banners } = body;
+
+    if (shopTemplate !== undefined || shopPalette !== undefined || banners !== undefined) {
+      if (shopTemplate !== undefined && !isShopTemplateId(shopTemplate)) {
+        return NextResponse.json({ error: "Belə şablon mövcud deyil." }, { status: 400 });
+      }
+      if (
+        banners !== undefined &&
+        (!Array.isArray(banners) || banners.length > MAX_SHOP_BANNERS || !banners.every(isBannerUrl))
+      ) {
+        return NextResponse.json({ error: "Banner siyahısı yanlışdır." }, { status: 400 });
+      }
+
+      const current = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { isPremium: true, shopTemplate: true },
+      });
+
+      // Palitra həmişə nəticədə aktiv olacaq şablona aid olmalıdır.
+      if (shopPalette !== undefined && shopPalette !== null) {
+        const targetTemplate = getShopTemplate(shopTemplate ?? current?.shopTemplate);
+        if (!isShopPaletteId(targetTemplate, shopPalette)) {
+          return NextResponse.json({ error: "Bu şablonda belə rəng yoxdur." }, { status: 400 });
+        }
+      }
+      const wantsPremium =
+        (shopTemplate !== undefined && getShopTemplate(shopTemplate).premium) ||
+        (Array.isArray(banners) && banners.length > 0);
+      if (wantsPremium && !current?.isPremium) {
+        return NextResponse.json(
+          { error: "Bu seçim yalnız premium mağazalar üçün əlçatandır." },
+          { status: 403 }
+        );
+      }
+    }
 
     const sanitizeUrl = (val: string | undefined | null, max: number) => {
       if (val === undefined) return undefined;
@@ -83,6 +126,10 @@ export async function PATCH(req: Request) {
         twitter: sanitizeUrl(twitter, 100),
         facebook: sanitizeUrl(facebook, 100),
         youtube: sanitizeUrl(youtube, 100),
+        shopTemplate: shopTemplate !== undefined ? shopTemplate : undefined,
+        // Şablon dəyişəndə rəng göndərilməyibsə, köhnə şablonun palitrası sıfırlanır.
+        shopPalette: shopPalette !== undefined ? shopPalette : shopTemplate !== undefined ? null : undefined,
+        banners: banners !== undefined ? banners : undefined,
       },
     });
 
@@ -103,6 +150,10 @@ export async function PATCH(req: Request) {
         twitter: updated.twitter,
         facebook: updated.facebook,
         youtube: updated.youtube,
+        isPremium: updated.isPremium,
+        shopTemplate: updated.shopTemplate,
+        shopPalette: updated.shopPalette,
+        banners: updated.banners,
       },
     });
   } catch (error) {

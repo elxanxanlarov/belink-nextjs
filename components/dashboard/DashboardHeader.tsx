@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { Plus, ExternalLink, ShoppingBag, User, LogOut } from "lucide-react";
+import { Plus, ExternalLink, ShoppingBag, User, LogOut, Palette } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { DashboardTab, UserProfileData } from "@/types";
 import { AvatarImage } from "@/components/ui/AvatarImage";
@@ -49,6 +49,17 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
             >
               <ShoppingBag size={14} />
               Məhsullarım ({productCount})
+            </button>
+            <button
+              onClick={() => onTabChange("design")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === "design"
+                  ? "bg-white text-gray-900 shadow-xs"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              <Palette size={14} />
+              Dizayn
             </button>
             <button
               onClick={() => onTabChange("profile")}

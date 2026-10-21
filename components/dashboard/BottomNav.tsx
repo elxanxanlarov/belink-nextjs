@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { Home, Plus, User, ExternalLink, ShoppingBag } from "lucide-react";
+import { Palette, Plus, User, ExternalLink, ShoppingBag } from "lucide-react";
 import { DashboardTab } from "@/types";
 
 export interface BottomNavProps {
@@ -20,14 +20,18 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 }) => {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-100 flex md:hidden items-end justify-around px-2 pb-3 pt-1 safe-bottom shadow-lg select-none">
-      {/* 1. Ana səhifə (Yönləndirir /) */}
-      <Link
-        href="/"
-        className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold text-gray-400 hover:text-gray-600 transition-all"
+      {/* 1. Dizayn (Tab: design) */}
+      <button
+        onClick={() => onTabChange("design")}
+        className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all cursor-pointer ${
+          activeTab === "design"
+            ? "text-[#1a7a4a]"
+            : "text-gray-400 hover:text-gray-600"
+        }`}
       >
-        <Home size={21} strokeWidth={1.8} />
-        <span>Ana səhifə</span>
-      </Link>
+        <Palette size={21} strokeWidth={activeTab === "design" ? 2.5 : 1.8} />
+        <span>Dizayn</span>
+      </button>
 
       {/* 2. Məhsullarım (Tab: products) */}
       <button

@@ -1,4 +1,4 @@
-import { Users, Layers, ShoppingBag, ShieldCheck } from "lucide-react";
+import { Users, Layers, ShoppingBag, ShieldCheck, Store } from "lucide-react";
 import { AdminDashboardStats, AdminTabType } from "@/types";
 
 export interface NavItem {
@@ -12,6 +12,11 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
     id: "customers",
     label: "Müştərilər",
     icon: Users,
+  },
+  {
+    id: "homeShops",
+    label: "Ana səhifə mağazaları",
+    icon: Store,
   },
   {
     id: "stats",

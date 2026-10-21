@@ -53,6 +53,12 @@ model User {
   twitter       String?
   facebook      String?
   youtube       String?
+  isFeatured    Boolean   @default(false) @map("is_featured")
+  featuredOrder Int?      @map("featured_order")
+  isPremium     Boolean   @default(false) @map("is_premium")
+  shopTemplate  String    @default("classic") @map("shop_template")
+  shopPalette   String?   @map("shop_palette")
+  banners       String[]
   accounts      Account[]
   sessions      Session[]
   categories    Category[]

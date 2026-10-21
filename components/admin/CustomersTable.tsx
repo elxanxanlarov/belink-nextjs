@@ -6,12 +6,14 @@ import { CustomersTableProps } from "@/types";
 import { Table, ColumnDefinition } from "@/components/ui/Table";
 import { Input } from "@/components/ui/Input";
 import { AvatarImage } from "@/components/ui/AvatarImage";
+import { getShopTemplate } from "@/data/shopTemplates";
 
 const TABLE_COLUMNS: ColumnDefinition[] = [
   { header: "Müştəri" },
   { header: "Mağaza Adı" },
   { header: "İstifadəçi Adı" },
   { header: "Məhsul Sayı" },
+  { header: "Premium" },
   { header: "Qeydiyyat Tarixi" },
 ];
 
@@ -19,6 +21,7 @@ export const CustomersTable: React.FC<CustomersTableProps> = ({
   customers,
   searchQuery,
   onSearchChange,
+  onTogglePremium,
 }) => {
   const filteredCustomers = customers.filter((c) => {
     const q = searchQuery.toLowerCase().trim();
@@ -99,6 +102,32 @@ export const CustomersTable: React.FC<CustomersTableProps> = ({
               <span className="font-bold text-gray-800 text-xs bg-gray-100 px-2.5 py-1 rounded-full">
                 {customer.productCount} məhsul
               </span>
+            </td>
+            <td className="px-6 py-4">
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={customer.isPremium}
+                  aria-label="Premium"
+                  onClick={() => onTogglePremium(customer.id, !customer.isPremium)}
+                  title={customer.isPremium ? "Premiumu söndür" : "Premium et"}
+                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors cursor-pointer ${
+                    customer.isPremium ? "bg-amber-500" : "bg-gray-200"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
+                      customer.isPremium ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+                {customer.isPremium && (
+                  <span className="text-[11px] font-semibold text-gray-500">
+                    {getShopTemplate(customer.shopTemplate).name}
+                  </span>
+                )}
+              </div>
             </td>
             <td className="px-6 py-4 text-xs text-gray-500">
               {new Date(customer.createdAt).toLocaleDateString("az-AZ", {

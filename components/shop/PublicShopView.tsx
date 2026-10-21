@@ -13,12 +13,13 @@ import {
   Share2,
   Check,
   Search,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 import { AvatarImage } from "@/components/ui/AvatarImage";
 import ImagePreviewModal from "@/components/modals/ImagePreviewModal";
 import { showToast } from "@/lib/swal";
+import { useShopCart } from "@/lib/useShopCart";
+import { buildSingleOrderUrl, buildWhatsappUrl } from "@/lib/shopOrder";
+import type { ShopCategory as CategoryItem, ShopProduct as ProductItem } from "@/types";
 import {
   InstagramIcon,
   TikTokIcon,
@@ -28,22 +29,6 @@ import {
   YouTubeIcon,
   WhatsAppIcon,
 } from "@/assets/icons";
-
-interface CategoryItem {
-  id: string;
-  name: string;
-}
-
-interface ProductItem {
-  id: string;
-  title: string;
-  price: number;
-  imageUrl: string;
-  images?: string[];
-  description?: string | null;
-  categoryId?: string | null;
-  category?: CategoryItem | null;
-}
 
 interface UserShopData {
   id: string;
@@ -62,20 +47,14 @@ interface UserShopData {
   products: ProductItem[];
 }
 
-interface CartItem {
-  product: ProductItem;
-  quantity: number;
-}
-
 export default function PublicShopView({ user }: { user: UserShopData }) {
-  const [cart, setCart] = useState<Record<string, CartItem>>({});
+  const { cart, cartList, totalItemsCount, totalPrice, addToCart, updateQuantity, removeFromCart } =
+    useShopCart(user.username);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [selectedProduct, setSelectedProduct] = useState<ProductItem | null>(null);
   const [copied, setCopied] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
-  const [currentSlide, setCurrentSlide] = useState(0);
 
   const rawPhone = user.whatsappPhone || "";
   const cleanPhone = rawPhone.replace(/[^0-9]/g, "");
@@ -109,41 +88,6 @@ export default function PublicShopView({ user }: { user: UserShopData }) {
     return result;
   }, [user.products, searchQuery, activeCategoryId]);
 
-  const addToCart = (product: ProductItem) => {
-    setCart((prev) => {
-      const existing = prev[product.id];
-      const newQty = existing ? existing.quantity + 1 : 1;
-      return { ...prev, [product.id]: { product, quantity: newQty } };
-    });
-    showToast(`"${product.title}" səbətə əlavə edildi`, "success");
-  };
-
-  const updateQuantity = (productId: string, delta: number) => {
-    setCart((prev) => {
-      const existing = prev[productId];
-      if (!existing) return prev;
-      const newQty = existing.quantity + delta;
-      if (newQty <= 0) {
-        const copy = { ...prev };
-        delete copy[productId];
-        return copy;
-      }
-      return { ...prev, [productId]: { ...existing, quantity: newQty } };
-    });
-  };
-
-  const removeFromCart = (productId: string) => {
-    setCart((prev) => {
-      const copy = { ...prev };
-      delete copy[productId];
-      return copy;
-    });
-  };
-
-  const cartList = Object.values(cart);
-  const totalItemsCount = cartList.reduce((sum, item) => sum + item.quantity, 0);
-  const totalPrice = cartList.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-
   const handleShare = () => {
     if (navigator.share) {
       navigator.share({ title: user.shopName || user.name || "Belink Mağaza", url: window.location.href });
@@ -156,19 +100,13 @@ export default function PublicShopView({ user }: { user: UserShopData }) {
   };
 
   const handleSingleOrder = (product: ProductItem) => {
-    const text = encodeURIComponent(
-      `Salam! "${product.title}" məhsulu haqqında sifariş vermək istəyirəm.\n\nQiymət: ${product.price} AZN\nMağaza: belink.az/${user.username}`
-    );
-    const waUrl = cleanPhone
-      ? `https://wa.me/${cleanPhone}?text=${text}`
-      : `https://wa.me/?text=${text}`;
-    window.open(waUrl, "_blank");
+    window.open(buildSingleOrderUrl(product, user.username, user.whatsappPhone), "_blank");
   };
 
   const handleCheckoutCart = () => {
     if (cartList.length === 0) return;
 
-    let itemsText = cartList
+    const itemsText = cartList
       .map(
         (item, index) =>
           `${index + 1}. ${item.product.title} - ${item.quantity} ədəd x ${item.product.price} AZN = ${(item.product.price * item.quantity).toFixed(2)} AZN`
@@ -177,10 +115,7 @@ export default function PublicShopView({ user }: { user: UserShopData }) {
 
     const message = `Salam! Sizin belink.az/${user.username} mağazanızdan sifariş vermək istəyirəm:\n\n🛒 Səbətdəki Məhsullar:\n${itemsText}\n\n💵 Cəmi Məbləğ: ${totalPrice.toFixed(2)} AZN\n\nZəhmət olmasa sifarişi təsdiqləyin.`;
 
-    const waUrl = cleanPhone
-      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
-      : `https://wa.me/?text=${encodeURIComponent(message)}`;
-    window.open(waUrl, "_blank");
+    window.open(buildWhatsappUrl(user.whatsappPhone, message), "_blank");
   };
 
   const formatSocialUrl = (url: string, prefix: string) => {
@@ -208,146 +143,6 @@ export default function PublicShopView({ user }: { user: UserShopData }) {
           imageUrl={previewImage}
           altText={user.shopName || user.name || "Şəkil"}
         />
-      )}
-
-      {/* Product Detail Slider Modal */}
-      {selectedProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
-          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <button
-              onClick={() => setSelectedProduct(null)}
-              className="absolute top-4 right-4 z-20 p-2.5 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
-            >
-              <X size={20} />
-            </button>
-
-            <div className="p-4 sm:p-6">
-              {/* Image Slider */}
-              <div className="relative mb-4">
-                <div className="relative w-full h-64 sm:h-96 rounded-2xl overflow-hidden bg-gray-50">
-                  <Image
-                    src={
-                      selectedProduct.images && selectedProduct.images.length > 0
-                        ? selectedProduct.images[currentSlide]
-                        : selectedProduct.imageUrl
-                    }
-                    alt={selectedProduct.title}
-                    fill
-                    unoptimized
-                    className="object-contain"
-                  />
-                </div>
-
-                {/* Navigation Arrows */}
-                {selectedProduct.images && selectedProduct.images.length > 1 && (
-                  <>
-                    <button
-                      onClick={() =>
-                        setCurrentSlide((prev) =>
-                          prev === 0 ? selectedProduct.images!.length - 1 : prev - 1
-                        )
-                      }
-                      className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white transition-all"
-                    >
-                      <ChevronLeft size={24} />
-                    </button>
-                    <button
-                      onClick={() =>
-                        setCurrentSlide((prev) =>
-                          prev === selectedProduct.images!.length - 1 ? 0 : prev + 1
-                        )
-                      }
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white transition-all"
-                    >
-                      <ChevronRight size={24} />
-                    </button>
-
-                    {/* Dots */}
-                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-                      {selectedProduct.images.map((_, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => setCurrentSlide(idx)}
-                          className={`w-2 h-2 rounded-full transition-all ${
-                            idx === currentSlide
-                              ? "bg-white w-6"
-                              : "bg-white/50 hover:bg-white/75"
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Thumbnails */}
-              {selectedProduct.images && selectedProduct.images.length > 1 && (
-                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 mb-4">
-                  {selectedProduct.images.map((img, idx) => (
-                    <div
-                      key={idx}
-                      onClick={() => setCurrentSlide(idx)}
-                      className={`relative aspect-square rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${
-                        idx === currentSlide
-                          ? "border-[#1a7a4a]"
-                          : "border-gray-200 hover:border-gray-400"
-                      }`}
-                    >
-                      <Image src={img} alt={`Thumbnail ${idx + 1}`} fill unoptimized className="object-cover" />
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Product Info */}
-              <div className="flex flex-col gap-3">
-                <div className="flex items-start justify-between gap-3">
-                  <h2 className="text-xl sm:text-2xl font-black text-gray-900">
-                    {selectedProduct.title}
-                  </h2>
-                  <span className="text-xl sm:text-2xl font-black text-[#1a7a4a] shrink-0">
-                    {selectedProduct.price} AZN
-                  </span>
-                </div>
-
-                {selectedProduct.category && (
-                  <span className="inline-flex self-start items-center px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold">
-                    {selectedProduct.category.name}
-                  </span>
-                )}
-
-                {selectedProduct.description && (
-                  <div className="pt-3 border-t border-gray-100">
-                    <h3 className="text-sm font-bold text-gray-900 mb-2">Məhsul Haqqında</h3>
-                    <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
-                      {selectedProduct.description}
-                    </p>
-                  </div>
-                )}
-
-                <div className="pt-4 border-t border-gray-100 flex gap-3">
-                  <button
-                    onClick={() => {
-                      handleSingleOrder(selectedProduct);
-                      setSelectedProduct(null);
-                    }}
-                    className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-full bg-[#1a7a4a] hover:bg-[#156040] text-white font-bold text-sm shadow-md shadow-emerald-200 transition-all"
-                  >
-                    <MessageCircle size={18} /> Sifariş Et
-                  </button>
-                  <button
-                    onClick={() => {
-                      addToCart(selectedProduct);
-                    }}
-                    className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-[#1a7a4a] font-bold text-sm transition-all border border-emerald-200"
-                  >
-                    <Plus size={18} /> Səbətə at
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
       )}
 
       <header className="w-full bg-white border-b border-gray-100 py-3.5 px-4 sm:px-8 sticky top-0 z-30 shadow-xs">
@@ -525,11 +320,8 @@ export default function PublicShopView({ user }: { user: UserShopData }) {
                     className="bg-white rounded-3xl border border-gray-100 p-3 sm:p-4 shadow-xs hover:shadow-md transition-all flex flex-col justify-between gap-2.5 group min-w-0 overflow-hidden"
                   >
                     <div className="flex flex-col gap-2.5 min-w-0">
-                      <div
-                        onClick={() => {
-                          setSelectedProduct(product);
-                          setCurrentSlide(0);
-                        }}
+                      <Link
+                        href={`/${user.username}/${product.id}`}
                         className="relative w-full h-36 sm:h-44 rounded-2xl overflow-hidden bg-gray-50 border border-gray-100 flex items-center justify-center cursor-pointer"
                       >
                         <Image
@@ -547,11 +339,16 @@ export default function PublicShopView({ user }: { user: UserShopData }) {
                             {product.category.name}
                           </span>
                         )}
-                      </div>
+                      </Link>
 
                       <div className="min-w-0">
                         <h3 className="font-bold text-gray-900 text-xs sm:text-sm break-words line-clamp-2 leading-tight">
-                          {product.title}
+                          <Link
+                            href={`/${user.username}/${product.id}`}
+                            className="hover:text-[#1a7a4a] transition-colors"
+                          >
+                            {product.title}
+                          </Link>
                         </h3>
                         {product.description && (
                           <p className="text-[11px] text-gray-400 mt-1 line-clamp-1 break-words">

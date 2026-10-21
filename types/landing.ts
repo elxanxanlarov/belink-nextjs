@@ -26,3 +26,13 @@ export interface CartItem {
   name: string;
   price: string;
 }
+
+export interface FeaturedShop {
+  id: string;
+  username: string;
+  shopName?: string | null;
+  name?: string | null;
+  image?: string | null;
+  bio?: string | null;
+  productCount: number;
+}

@@ -43,6 +43,35 @@ input[type="number"] {
   appearance: textfield;
 }
 
+@keyframes shops-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.shops-marquee-track {
+  animation: shops-marquee var(--shops-marquee-duration, 40s) linear infinite;
+}
+
+.shops-marquee:hover .shops-marquee-track,
+.shops-marquee:focus-within .shops-marquee-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shops-marquee {
+    overflow-x: auto;
+  }
+
+  .shops-marquee-track {
+    animation: none;
+  }
+
+  .shops-marquee-clone {
+    display: none;
+  }
+}
+
 .PhoneInput {
   display: flex;
   align-items: center;

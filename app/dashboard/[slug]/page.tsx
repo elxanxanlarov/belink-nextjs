@@ -9,6 +9,7 @@ import { DashboardProduct, DashboardTab, UserProfileData } from "@/types";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { ProductList } from "@/components/dashboard/ProductList";
 import { ProfileView } from "@/components/dashboard/ProfileView";
+import { DesignView } from "@/components/dashboard/DesignView";
 import { ProductModal } from "@/components/dashboard/ProductModal";
 import { BottomNav } from "@/components/dashboard/BottomNav";
 import { showToast } from "@/lib/swal";
@@ -22,7 +23,7 @@ export default function DashboardSlugPage({ params }: PageProps) {
   const { status } = useSession();
   const router = useRouter();
 
-  const initialTab: DashboardTab = slug === "profile" ? "profile" : "products";
+  const initialTab: DashboardTab = slug === "profile" || slug === "design" ? slug : "products";
   const [activeTab, setActiveTab] = useState<DashboardTab>(initialTab);
   const [products, setProducts] = useState<DashboardProduct[]>([]);
   const [profile, setProfile] = useState<UserProfileData | null>(null);
@@ -31,7 +32,7 @@ export default function DashboardSlugPage({ params }: PageProps) {
   const [productToEdit, setProductToEdit] = useState<DashboardProduct | null>(null);
 
   useEffect(() => {
-    if (slug === "profile" || slug === "products") {
+    if (slug === "profile" || slug === "products" || slug === "design") {
       setActiveTab(slug);
     }
   }, [slug]);
@@ -170,6 +171,10 @@ export default function DashboardSlugPage({ params }: PageProps) {
             onDelete={handleDelete}
             onAdd={handleOpenAdd}
           />
+        )}
+
+        {activeTab === "design" && (
+          <DesignView profile={profile} onProfileUpdated={handleProfileUpdated} />
         )}
 
         {activeTab === "profile" && (

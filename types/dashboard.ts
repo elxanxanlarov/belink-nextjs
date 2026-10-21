@@ -1,4 +1,4 @@
-export type DashboardTab = "products" | "profile";
+export type DashboardTab = "products" | "design" | "profile";
 
 export interface Category {
   id: string;
@@ -42,5 +42,9 @@ export interface UserProfileData {
   twitter?: string | null;
   facebook?: string | null;
   youtube?: string | null;
+  isPremium?: boolean;
+  shopTemplate?: string;
+  shopPalette?: string | null;
+  banners?: string[];
   productCount?: number;
 }

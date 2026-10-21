@@ -1,6 +1,6 @@
 export type StaffRole = "ADMIN" | "SUPERADMIN";
 
-export type AdminTabType = "customers" | "stats";
+export type AdminTabType = "customers" | "homeShops" | "stats";
 
 export interface StaffUser {
   id: string;
@@ -25,6 +25,10 @@ export interface CustomerUserItem {
   username?: string | null;
   shopName?: string | null;
   bio?: string | null;
+  isFeatured: boolean;
+  isPremium: boolean;
+  shopTemplate?: string;
+  featuredOrder: number | null;
   productCount: number;
   createdAt: string;
 }
@@ -64,4 +68,10 @@ export interface CustomersTableProps {
   customers: CustomerUserItem[];
   searchQuery: string;
   onSearchChange: (query: string) => void;
+  onTogglePremium: (id: string, isPremium: boolean) => void;
+}
+
+export interface FeaturedShopsManagerProps {
+  customers: CustomerUserItem[];
+  onChange: (orderedIds: string[]) => void;
 }
