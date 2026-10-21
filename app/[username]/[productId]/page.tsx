@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import ProductDetailView from "@/components/shop/ProductDetailView";
+import StorefrontProductView from "@/components/shop/storefront/StorefrontProductView";
+import { resolveShopTemplate } from "@/data/shopTemplates";
 
 interface ProductPageProps {
   params: Promise<{ username: string; productId: string }>;
@@ -39,6 +41,9 @@ const getProduct = cache(async (username: string, productId: string) => {
           name: true,
           image: true,
           whatsappPhone: true,
+          isPremium: true,
+          shopTemplate: true,
+          shopPalette: true,
         },
       },
     },
@@ -73,19 +78,29 @@ export default async function ProductPage({ params }: ProductPageProps) {
   });
 
   const { user, ...productData } = product;
+  const shop = {
+    username: product.user.username,
+    shopName: user.shopName,
+    name: user.name,
+    image: user.image,
+    whatsappPhone: user.whatsappPhone,
+  };
 
-  return (
-    <ProductDetailView
-      key={productData.id}
-      shop={{
-        username: product.user.username,
-        shopName: user.shopName,
-        name: user.name,
-        image: user.image,
-        whatsappPhone: user.whatsappPhone,
-      }}
-      product={productData}
-      otherProducts={otherProducts}
-    />
-  );
+  // Premium şablonu olan mağazada məhsul səhifəsi də həmin dizaynda göstərilir.
+  const template = resolveShopTemplate(user.shopTemplate, user.isPremium);
+  if (template.premium) {
+    return (
+      <StorefrontProductView
+        key={productData.id}
+        shop={shop}
+        product={productData}
+        otherProducts={otherProducts}
+        template={template}
+        paletteId={user.shopPalette}
+        shopPath={`/${shop.username}`}
+      />
+    );
+  }
+
+  return <ProductDetailView key={productData.id} shop={shop} product={productData} otherProducts={otherProducts} />;
 }

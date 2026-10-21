@@ -25,11 +25,30 @@ import {
   YouTubeIcon,
   WhatsAppIcon,
 } from "@/assets/icons";
-import type { ShopProduct } from "@/types";
+import type { CSSProperties } from "react";
+import type { ShopPalette, ShopProduct, ShopTemplate } from "@/types";
 import type { Storefront } from "./useStorefront";
 
 export interface LayoutProps {
   sf: Storefront;
+}
+
+/** Şablonun rəng və forma tokenlərini CSS dəyişənləri kimi qaytarır. */
+export function storefrontThemeStyle(template: ShopTemplate, palette: ShopPalette): CSSProperties {
+  return {
+    "--sf-bg": palette.bg,
+    "--sf-surface": palette.surface,
+    "--sf-text": palette.text,
+    "--sf-muted": palette.muted,
+    "--sf-border": palette.border,
+    "--sf-accent": palette.accent,
+    "--sf-accent-text": palette.accentText,
+    "--sf-radius": template.shape.radius,
+    "--sf-btn-radius": template.shape.buttonRadius,
+    "--sf-heading-font": template.shape.headingFont,
+    "--sf-heading-transform": template.shape.headingTransform,
+    "--sf-heading-spacing": template.shape.headingSpacing,
+  } as CSSProperties;
 }
 
 const SOCIAL_ICONS: Record<ShopSocialKey, React.ComponentType<{ size?: number; className?: string }>> = {

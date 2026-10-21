@@ -1,16 +1,21 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import ProductDetailView from "@/components/shop/ProductDetailView";
+import StorefrontProductView from "@/components/shop/storefront/StorefrontProductView";
+import { PREMIUM_SHOP_TEMPLATES } from "@/data/shopTemplates";
 import { getShopDemo } from "@/data/shopDemos";
 
 interface TemplateProductPageProps {
   params: Promise<{ id: string; productId: string }>;
+  searchParams: Promise<{ palette?: string | string[] }>;
 }
 
+const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
+
 function getDemoProduct(templateId: string, productId: string) {
-  const demo = getShopDemo(templateId);
+  const template = PREMIUM_SHOP_TEMPLATES.find((t) => t.id === templateId);
+  const demo = template ? getShopDemo(template.id) : null;
   const product = demo?.products.find((p) => p.id === productId);
-  return demo && product ? { demo, product } : null;
+  return template && demo && product ? { template, demo, product } : null;
 }
 
 export async function generateMetadata({ params }: TemplateProductPageProps): Promise<Metadata> {
@@ -24,17 +29,18 @@ export async function generateMetadata({ params }: TemplateProductPageProps): Pr
   };
 }
 
-export default async function TemplateProductPage({ params }: TemplateProductPageProps) {
+export default async function TemplateProductPage({ params, searchParams }: TemplateProductPageProps) {
   const { id, productId } = await params;
+  const { palette } = await searchParams;
   const found = getDemoProduct(id, productId);
   if (!found) {
     notFound();
   }
 
-  const { demo, product } = found;
+  const { template, demo, product } = found;
 
   return (
-    <ProductDetailView
+    <StorefrontProductView
       key={product.id}
       shop={{
         username: demo.username ?? `demo-${id}`,
@@ -45,7 +51,9 @@ export default async function TemplateProductPage({ params }: TemplateProductPag
       }}
       product={product}
       otherProducts={demo.products.filter((p) => p.id !== product.id).slice(0, 8)}
-      shopHref={`/templates/${id}`}
+      template={template}
+      paletteId={first(palette)}
+      shopPath={`/templates/${id}`}
       isDemo
     />
   );

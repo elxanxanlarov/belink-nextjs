@@ -1,11 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
-import type { CSSProperties } from "react";
 import Link from "next/link";
 import { getShopPalette } from "@/data/shopTemplates";
-import type { ShopLayout, ShopPageData, ShopTemplate } from "@/types";
-import { CartModal, LayoutProps } from "./parts";
+import type { ShopLayout, ShopPageData, ShopProduct, ShopTemplate } from "@/types";
+import { CartModal, LayoutProps, storefrontThemeStyle } from "./parts";
 import { useStorefront } from "./useStorefront";
 import BoutiqueLayout from "./BoutiqueLayout";
 import ShowcaseLayout from "./ShowcaseLayout";
@@ -29,28 +28,15 @@ export interface StorefrontViewProps {
 
 export default function StorefrontView({ user, template, paletteId, mode = "live" }: StorefrontViewProps) {
   const [activePaletteId, setActivePaletteId] = useState(paletteId);
-  const sf = useStorefront(user, mode === "demo", mode === "demo" ? `/templates/${template.id}` : undefined);
-
   const palette = getShopPalette(template, activePaletteId);
+  // Nümunə mağazada məhsul səhifəsi şablon səhifəsinin altındadır və seçilmiş rəng ora da ötürülür.
+  const demoProductHref = (product: ShopProduct) => `/templates/${template.id}/${product.id}?palette=${palette.id}`;
+  const sf = useStorefront(user, mode === "demo", mode === "demo" ? demoProductHref : undefined);
+
   const Layout = LAYOUTS[template.layout as Exclude<ShopLayout, "classic">] ?? BoutiqueLayout;
 
-  const themeStyle = {
-    "--sf-bg": palette.bg,
-    "--sf-surface": palette.surface,
-    "--sf-text": palette.text,
-    "--sf-muted": palette.muted,
-    "--sf-border": palette.border,
-    "--sf-accent": palette.accent,
-    "--sf-accent-text": palette.accentText,
-    "--sf-radius": template.shape.radius,
-    "--sf-btn-radius": template.shape.buttonRadius,
-    "--sf-heading-font": template.shape.headingFont,
-    "--sf-heading-transform": template.shape.headingTransform,
-    "--sf-heading-spacing": template.shape.headingSpacing,
-  } as CSSProperties;
-
   return (
-    <div style={themeStyle} className="min-h-screen flex flex-col bg-[var(--sf-bg)] text-[var(--sf-text)]">
+    <div style={storefrontThemeStyle(template, palette)} className="min-h-screen flex flex-col bg-[var(--sf-bg)] text-[var(--sf-text)]">
       {mode !== "live" && (
         <div className="bg-gray-900 text-white text-xs font-semibold px-4 py-2 flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
           <span>

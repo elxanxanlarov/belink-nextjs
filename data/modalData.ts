@@ -70,22 +70,16 @@ export const contactModalData: ContactModalData = {
   contacts: [
     {
       type: "E-poçt",
-      value: "support@belink.az",
-      href: "mailto:support@belink.az",
-      description: "24 saat ərzində cavablandırılır",
+      value: "belinkkaz@gmail.com",
+      href: "mailto:belinkkaz@gmail.com",
     },
     {
-      type: "WhatsApp Dəstək",
-      value: "+994 (50) 000-00-00",
-      href: "https://wa.me/994500000000",
-      description: "Hər gün 09:00 - 21:00",
-    },
-    {
-      type: "İş Saatları",
-      value: "Bazar ertəsi - Şənbə",
-      description: "09:00 - 18:00",
+      type: "WhatsApp",
+      value: "050 733 38 16",
+      href: "https://wa.me/994507333816",
     },
   ],
+  whatsappUrl: "https://wa.me/994507333816",
 };
 
 

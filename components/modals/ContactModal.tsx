@@ -1,17 +1,18 @@
 "use client";
 
-import { X, Mail, MessageCircle, Clock } from "lucide-react";
+import { X, Mail, MessageCircle } from "lucide-react";
 import { contactModalData } from "@/data/modalData";
 import { BaseModalProps } from "@/types";
 
 export default function ContactModal({ isOpen, onClose }: BaseModalProps) {
   if (!isOpen) return null;
 
-  const getIcon = (type: string) => {
-    if (type.includes("E-poçt")) return <Mail size={20} className="text-[#1a7a4a]" />;
-    if (type.includes("WhatsApp")) return <MessageCircle size={20} className="text-[#1a7a4a]" />;
-    return <Clock size={20} className="text-[#1a7a4a]" />;
-  };
+  const getIcon = (type: string) =>
+    type.includes("WhatsApp") ? (
+      <MessageCircle size={20} className="text-[#1a7a4a]" />
+    ) : (
+      <Mail size={20} className="text-[#1a7a4a]" />
+    );
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
@@ -58,11 +59,22 @@ export default function ContactModal({ isOpen, onClose }: BaseModalProps) {
                 ) : (
                   <span className="text-sm font-bold text-gray-800 truncate">{contact.value}</span>
                 )}
-                <span className="text-xs text-gray-500 mt-0.5">{contact.description}</span>
+                {contact.description && (
+                  <span className="text-xs text-gray-500 mt-0.5">{contact.description}</span>
+                )}
               </div>
             </div>
           ))}
         </div>
+
+        <a
+          href={contactModalData.whatsappUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full flex items-center justify-center gap-2 py-3.5 mb-3 rounded-full bg-[#1a7a4a] hover:bg-[#156040] text-white text-sm font-bold shadow-md shadow-emerald-200 transition-colors"
+        >
+          <MessageCircle size={18} /> WhatsApp ilə yaz
+        </a>
 
         <button
           onClick={onClose}

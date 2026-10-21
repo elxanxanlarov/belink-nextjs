@@ -22,13 +22,14 @@ export interface ContactItem {
   type: string;
   value: string;
   href?: string;
-  description: string;
+  description?: string;
 }
 
 export interface ContactModalData {
   title: string;
   subtitle: string;
   contacts: ContactItem[];
+  whatsappUrl: string;
 }
 
 export interface ImagePreviewModalProps extends BaseModalProps {
