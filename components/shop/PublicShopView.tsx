@@ -14,6 +14,7 @@ import {
   Check,
   Search,
 } from "lucide-react";
+import { getShopTitle } from "@/lib/shopTitle";
 import { AvatarImage } from "@/components/ui/AvatarImage";
 import ImagePreviewModal from "@/components/modals/ImagePreviewModal";
 import { showToast } from "@/lib/swal";
@@ -90,7 +91,7 @@ export default function PublicShopView({ user }: { user: UserShopData }) {
 
   const handleShare = () => {
     if (navigator.share) {
-      navigator.share({ title: user.shopName || user.name || "Belink Mağaza", url: window.location.href });
+      navigator.share({ title: getShopTitle(user), url: window.location.href });
     } else {
       navigator.clipboard.writeText(window.location.href);
       setCopied(true);
@@ -141,7 +142,7 @@ export default function PublicShopView({ user }: { user: UserShopData }) {
           isOpen={Boolean(previewImage)}
           onClose={() => setPreviewImage(null)}
           imageUrl={previewImage}
-          altText={user.shopName || user.name || "Şəkil"}
+          altText={getShopTitle(user)}
         />
       )}
 
@@ -177,7 +178,7 @@ export default function PublicShopView({ user }: { user: UserShopData }) {
           >
             <AvatarImage
               src={user.image}
-              alt={user.shopName || user.name || "Mağaza"}
+              alt={getShopTitle(user)}
               size={84}
               fallbackInitials={user.shopName ? user.shopName[0] : user.name ? user.name[0] : "B"}
               className="border-2 border-emerald-100 shadow-md"
@@ -186,7 +187,7 @@ export default function PublicShopView({ user }: { user: UserShopData }) {
 
           <div className="flex flex-col gap-0.5 min-w-0 max-w-full">
             <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight break-words max-w-full">
-              {user.shopName || user.name || `@${user.username}`}
+              {getShopTitle(user)}
             </h1>
             <span className="text-xs font-bold text-[#1a7a4a] truncate max-w-full">
               @{user.username}

@@ -130,7 +130,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   useEffect(() => {
     if (initialProfile) {
       setName(initialProfile.name || "");
-      setShopName(initialProfile.shopName || "");
+      setShopName(initialProfile.shopName || initialProfile.username || "");
       setBio(initialProfile.bio || "");
       setImage(initialProfile.image || null);
       setWhatsappPhone(initialProfile.whatsappPhone || "");
@@ -157,7 +157,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const isDirty = useMemo(() => {
     if (!initialProfile) return false;
     if (name !== (initialProfile.name || "")) return true;
-    if (shopName !== (initialProfile.shopName || "")) return true;
+    if (shopName !== (initialProfile.shopName || initialProfile.username || "")) return true;
     if (bio !== (initialProfile.bio || "")) return true;
     if (whatsappPhone !== (initialProfile.whatsappPhone || "")) return true;
     if (pendingBlob !== null) return true;
@@ -387,7 +387,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const handleReset = () => {
     if (!initialProfile) return;
     setName(initialProfile.name || "");
-    setShopName(initialProfile.shopName || "");
+    setShopName(initialProfile.shopName || initialProfile.username || "");
     setBio(initialProfile.bio || "");
     setImage(initialProfile.image || null);
     setWhatsappPhone(initialProfile.whatsappPhone || "");

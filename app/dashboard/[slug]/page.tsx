@@ -10,7 +10,6 @@ import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { ProductList } from "@/components/dashboard/ProductList";
 import { ProfileView } from "@/components/dashboard/ProfileView";
 import { DesignView } from "@/components/dashboard/DesignView";
-import { ProductModal } from "@/components/dashboard/ProductModal";
 import { BottomNav } from "@/components/dashboard/BottomNav";
 import { showToast } from "@/lib/swal";
 
@@ -28,8 +27,6 @@ export default function DashboardSlugPage({ params }: PageProps) {
   const [products, setProducts] = useState<DashboardProduct[]>([]);
   const [profile, setProfile] = useState<UserProfileData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [productToEdit, setProductToEdit] = useState<DashboardProduct | null>(null);
 
   useEffect(() => {
     if (slug === "profile" || slug === "products" || slug === "design") {
@@ -97,17 +94,11 @@ export default function DashboardSlugPage({ params }: PageProps) {
       });
       return;
     }
-    setProductToEdit(null);
-    setModalOpen(true);
-  };
-
-  const handleProductClick = (product: DashboardProduct) => {
-    // Optional: track product views or other analytics
+    router.push("/dashboard/products/new");
   };
 
   const handleEdit = (product: DashboardProduct) => {
-    setProductToEdit(product);
-    setModalOpen(true);
+    router.push(`/dashboard/products/${product.id}/edit`);
   };
 
   const handleDelete = async (productId: string) => {
@@ -184,13 +175,6 @@ export default function DashboardSlugPage({ params }: PageProps) {
           />
         )}
       </main>
-
-      <ProductModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onSuccess={loadDashboardData}
-        productToEdit={productToEdit}
-      />
 
       <BottomNav
         activeTab={activeTab}

@@ -59,13 +59,13 @@ export const ProductList: React.FC<ProductListProps> = ({
     return (
       <div className="flex flex-col gap-4 select-none">
         <div className="w-full h-11 bg-gray-100 rounded-2xl animate-pulse" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map((n) => (
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          {[1, 2, 3, 4].map((n) => (
             <div
               key={n}
-              className="bg-white rounded-3xl p-4 border border-gray-100 animate-pulse flex flex-col gap-3"
+              className="bg-white rounded-3xl p-2.5 sm:p-4 border border-gray-100 animate-pulse flex flex-col gap-3"
             >
-              <div className="w-full h-44 bg-gray-100 rounded-2xl" />
+              <div className="w-full aspect-square bg-gray-100 rounded-2xl" />
               <div className="h-4 bg-gray-100 rounded w-3/4" />
               <div className="h-4 bg-gray-100 rounded w-1/4" />
             </div>
@@ -176,14 +176,14 @@ export const ProductList: React.FC<ProductListProps> = ({
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
           {filteredProducts.map((product) => (
             <div
               key={product.id}
-              className="bg-white rounded-3xl border border-gray-100 p-4 shadow-xs hover:shadow-md transition-all flex flex-col justify-between group"
+              className="bg-white rounded-3xl border border-gray-100 p-2.5 sm:p-4 shadow-xs hover:shadow-md transition-all flex flex-col justify-between group min-w-0"
             >
-              <div className="flex flex-col gap-3">
-                <div className="relative w-full h-48 rounded-2xl overflow-hidden bg-gray-50 border border-gray-50 flex items-center justify-center cursor-pointer">
+              <div className="flex flex-col gap-2.5 sm:gap-3">
+                <div className="relative w-full aspect-square sm:aspect-auto sm:h-48 rounded-2xl overflow-hidden bg-gray-50 border border-gray-50 flex items-center justify-center cursor-pointer">
                   <Image
                     src={product.imageUrl}
                     alt={product.title}
@@ -191,22 +191,24 @@ export const ProductList: React.FC<ProductListProps> = ({
                     unoptimized
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
                   />
-                  <span className="absolute top-3 right-3 bg-white/90 text-[#1a7a4a] font-extrabold text-xs px-3 py-1.5 rounded-full shadow-sm">
+                  <span className="absolute top-2 right-2 sm:top-3 sm:right-3 max-w-[85%] truncate bg-white/90 text-[#1a7a4a] font-extrabold text-[11px] sm:text-xs px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full shadow-sm">
                     {product.price} AZN
                   </span>
                 </div>
 
-                <div className="flex flex-col gap-1">
-                  <h4 className="font-bold text-gray-900 text-sm line-clamp-1">{product.title}</h4>
+                <div className="flex flex-col gap-1 min-w-0">
+                  <h4 className="font-bold text-gray-900 text-xs sm:text-sm line-clamp-2 sm:line-clamp-1 break-words">
+                    {product.title}
+                  </h4>
                   {product.description && (
-                    <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">
+                    <p className="hidden sm:block text-xs text-gray-400 line-clamp-2 leading-relaxed">
                       {product.description}
                     </p>
                   )}
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 mt-4 pt-3 border-t border-gray-50">
+              <div className="flex items-center justify-end gap-1 sm:gap-2 mt-2.5 sm:mt-4 pt-2 sm:pt-3 border-t border-gray-50">
                 <button
                   onClick={() => onEdit(product)}
                   className="p-2 rounded-xl text-gray-500 hover:text-[#1a7a4a] hover:bg-emerald-50 transition-colors cursor-pointer"

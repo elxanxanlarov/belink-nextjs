@@ -14,6 +14,7 @@ import {
   ShoppingBag,
   Tag,
 } from "lucide-react";
+import { getShopTitle } from "@/lib/shopTitle";
 import { AvatarImage } from "@/components/ui/AvatarImage";
 import { useShopCart } from "@/lib/useShopCart";
 import { buildSingleOrderUrl } from "@/lib/shopOrder";
@@ -41,7 +42,7 @@ export default function ProductDetailView({
   const [activeIdx, setActiveIdx] = useState(0);
 
   const shopUrl = shopHref ?? `/${shop.username}`;
-  const shopTitle = shop.shopName || shop.name || `@${shop.username}`;
+  const shopTitle = getShopTitle(shop);
   const cartQuantity = cart[product.id]?.quantity ?? 0;
 
   const allImages = product.images && product.images.length > 0 ? product.images : [product.imageUrl];

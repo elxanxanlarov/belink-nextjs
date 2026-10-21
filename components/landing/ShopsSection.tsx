@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { getShopTitle } from "@/lib/shopTitle";
 import { AvatarImage } from "@/components/ui/AvatarImage";
 import type { FeaturedShop } from "@/types";
 
@@ -17,7 +18,7 @@ function ShopCard({
   className?: string;
   hidden?: boolean;
 }) {
-  const title = shop.shopName || shop.name || `@${shop.username}`;
+  const title = getShopTitle(shop);
 
   return (
     <Link

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { getShopTitle } from "@/lib/shopTitle";
 import { useShopCart } from "@/lib/useShopCart";
 import { buildWhatsappUrl } from "@/lib/shopOrder";
 import { getShopSocialLinks } from "@/lib/shopSocials";
@@ -23,7 +24,7 @@ export function useStorefront(
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
 
-  const shopTitle = user.shopName || user.name || `@${user.username}`;
+  const shopTitle = getShopTitle(user);
   const socialLinks = useMemo(() => getShopSocialLinks(user), [user]);
 
   const categories = useMemo(() => {

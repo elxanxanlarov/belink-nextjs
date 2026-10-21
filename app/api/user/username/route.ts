@@ -55,10 +55,17 @@ export async function POST(req: Request) {
       );
     }
 
+    const current = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { shopName: true },
+    });
+
+    // Mağaza adı boşdursa, başlanğıc olaraq istifadəçi adı götürülür; sonra profildən dəyişdirilə bilər.
     const updatedUser = await prisma.user.update({
       where: { id: session.user.id },
       data: {
         username: cleanUsername,
+        ...(current?.shopName?.trim() ? {} : { shopName: cleanUsername }),
       },
     });
 

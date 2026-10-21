@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, ChevronLeft, ChevronRight, MessageCircle, Minus, Plus, Share2, ShoppingBag } from "lucide-react";
+import { getShopTitle } from "@/lib/shopTitle";
 import { AvatarImage } from "@/components/ui/AvatarImage";
 import { getShopPalette } from "@/data/shopTemplates";
 import { useShopCart } from "@/lib/useShopCart";
@@ -36,7 +37,7 @@ function useProductPage({ shop, product, isDemo }: StorefrontProductViewProps) {
   const [activeIdx, setActiveIdx] = useState(0);
 
   const images = product.images && product.images.length > 0 ? product.images : [product.imageUrl];
-  const shopTitle = shop.shopName || shop.name || `@${shop.username}`;
+  const shopTitle = getShopTitle(shop);
 
   const order = () => {
     if (isDemo) {

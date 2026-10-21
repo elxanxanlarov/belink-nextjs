@@ -37,7 +37,8 @@ export default function SetUsernameModal() {
       }
 
       await update({ username: data.user.username });
-      window.location.reload();
+      // Qeydiyyatdan sonra profil məlumatlarını tamamlamaq üçün profil bölməsinə yönləndirilir.
+      window.location.href = "/dashboard/profile";
     } catch {
       setError("Xəta baş verdi. Yenidən cəhd edin.");
     } finally {

@@ -1,6 +1,7 @@
 import React, { cache } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { getShopTitle } from "@/lib/shopTitle";
 import { prisma } from "@/lib/prisma";
 import ProductDetailView from "@/components/shop/ProductDetailView";
 import StorefrontProductView from "@/components/shop/storefront/StorefrontProductView";
@@ -55,7 +56,7 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
   const product = await getProduct(username, productId);
   if (!product) return {};
 
-  const shopTitle = product.user.shopName || product.user.name || `@${product.user.username}`;
+  const shopTitle = getShopTitle(product.user);
   return {
     title: `${product.title} — ${shopTitle} | Belink`,
     description: product.description || `${product.title} — ${product.price} AZN`,

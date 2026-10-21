@@ -2,11 +2,12 @@
 
 import React, { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, Plus, Search, Store, Trash2, X } from "lucide-react";
+import { getShopTitle } from "@/lib/shopTitle";
 import { CustomerUserItem, FeaturedShopsManagerProps } from "@/types";
 import { Input } from "@/components/ui/Input";
 import { AvatarImage } from "@/components/ui/AvatarImage";
 
-const shopTitle = (c: CustomerUserItem) => c.shopName || c.name || `@${c.username}`;
+const shopTitle = (c: CustomerUserItem) => getShopTitle(c);
 
 export const FeaturedShopsManager: React.FC<FeaturedShopsManagerProps> = ({ customers, onChange }) => {
   const [pickerOpen, setPickerOpen] = useState(false);
