@@ -10,25 +10,37 @@ import {
   MessageCircle,
   Minus,
   Plus,
+  Share2,
   ShoppingBag,
   Tag,
 } from "lucide-react";
 import { AvatarImage } from "@/components/ui/AvatarImage";
 import { useShopCart } from "@/lib/useShopCart";
 import { buildSingleOrderUrl } from "@/lib/shopOrder";
+import { showToast } from "@/lib/swal";
 import type { ShopProduct, ShopSummary } from "@/types";
 
 interface ProductDetailViewProps {
   shop: ShopSummary;
   product: ShopProduct;
   otherProducts: ShopProduct[];
+  /** Mağaza səhifəsinin yolu; nümunə mağazada şablon səhifəsi. */
+  shopHref?: string;
+  /** Nümunə mağaza: sifariş göndərilmir. */
+  isDemo?: boolean;
 }
 
-export default function ProductDetailView({ shop, product, otherProducts }: ProductDetailViewProps) {
+export default function ProductDetailView({
+  shop,
+  product,
+  otherProducts,
+  shopHref,
+  isDemo = false,
+}: ProductDetailViewProps) {
   const { cart, totalItemsCount, addToCart, updateQuantity } = useShopCart(shop.username);
   const [activeIdx, setActiveIdx] = useState(0);
 
-  const shopUrl = `/${shop.username}`;
+  const shopUrl = shopHref ?? `/${shop.username}`;
   const shopTitle = shop.shopName || shop.name || `@${shop.username}`;
   const cartQuantity = cart[product.id]?.quantity ?? 0;
 
@@ -37,7 +49,29 @@ export default function ProductDetailView({ shop, product, otherProducts }: Prod
   const next = () => setActiveIdx((i) => (i === allImages.length - 1 ? 0 : i + 1));
 
   const handleOrder = () => {
+    if (isDemo) {
+      showToast("Bu nümunə mağazadır, sifariş göndərilmir", "info");
+      return;
+    }
     window.open(buildSingleOrderUrl(product, shop.username, shop.whatsappPhone), "_blank");
+  };
+
+  const handleShare = async () => {
+    const url = window.location.href;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: product.title, text: `${product.title} — ${product.price} AZN`, url });
+      } catch {
+        // İstifadəçi paylaşımı ləğv etdi.
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast("Link kopyalandı", "success");
+    } catch {
+      showToast("Linki kopyalamaq mümkün olmadı", "error");
+    }
   };
 
   return (
@@ -199,6 +233,13 @@ export default function ProductDetailView({ shop, product, otherProducts }: Prod
                 className="w-full flex items-center justify-center gap-2 py-3.5 rounded-full bg-[#1a7a4a] hover:bg-[#156040] text-white font-bold text-sm shadow-md shadow-emerald-200 transition-all cursor-pointer"
               >
                 <MessageCircle size={18} /> WhatsApp ilə sifariş et
+              </button>
+
+              <button
+                onClick={handleShare}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-full bg-white hover:bg-gray-50 text-gray-700 font-bold text-sm transition-colors cursor-pointer border border-gray-200"
+              >
+                <Share2 size={16} /> Paylaş
               </button>
             </div>
           </div>

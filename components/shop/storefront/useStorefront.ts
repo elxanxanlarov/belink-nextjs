@@ -12,13 +12,13 @@ export interface StorefrontCategory extends ShopCategory {
   count: number;
 }
 
-export function useStorefront(user: ShopPageData, isDemo: boolean) {
+/** productBasePath: məhsul səhifələrinin kök yolu (nümunə mağazada şablon səhifəsi). */
+export function useStorefront(user: ShopPageData, isDemo: boolean, productBasePath = `/${user.username}`) {
   const cartState = useShopCart(user.username);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
 
-  const shopUrl = `/${user.username}`;
   const shopTitle = user.shopName || user.name || `@${user.username}`;
   const socialLinks = useMemo(() => getShopSocialLinks(user), [user]);
 
@@ -55,8 +55,7 @@ export function useStorefront(user: ShopPageData, isDemo: boolean) {
     document.getElementById("mehsullar")?.scrollIntoView({ behavior: "smooth" });
   };
 
-  /** Nümunə mağazada məhsulun ayrıca səhifəsi yoxdur. */
-  const productHref = (product: ShopProduct) => (isDemo ? null : `${shopUrl}/${product.id}`);
+  const productHref = (product: ShopProduct) => `${productBasePath}/${product.id}`;
 
   const contactUrl = isDemo
     ? null

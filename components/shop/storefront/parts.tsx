@@ -64,7 +64,7 @@ export function ShopAvatar({ sf, size }: LayoutProps & { size: number }) {
   );
 }
 
-/** Məhsul səhifəsinə link; nümunə mağazada sadəcə blok kimi render olunur. */
+/** Məhsul səhifəsinə link. */
 export function ProductLink({
   sf,
   product,

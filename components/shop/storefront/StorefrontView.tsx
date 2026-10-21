@@ -29,7 +29,7 @@ export interface StorefrontViewProps {
 
 export default function StorefrontView({ user, template, paletteId, mode = "live" }: StorefrontViewProps) {
   const [activePaletteId, setActivePaletteId] = useState(paletteId);
-  const sf = useStorefront(user, mode === "demo");
+  const sf = useStorefront(user, mode === "demo", mode === "demo" ? `/templates/${template.id}` : undefined);
 
   const palette = getShopPalette(template, activePaletteId);
   const Layout = LAYOUTS[template.layout as Exclude<ShopLayout, "classic">] ?? BoutiqueLayout;
