@@ -10,6 +10,7 @@ interface ImageCropModalProps {
   onClose: () => void;
   imageSrc: string;
   onCropComplete: (blob: Blob, dataUrl: string) => void;
+  onImageProcessingError?: () => void;
   /** Set true for circular crop (profile photo). Default: false (free rectangular) */
   circular?: boolean;
   /** Optional fixed aspect ratio (e.g. 1 for square, 4/3 for product). Undefined = free */
@@ -25,6 +26,7 @@ export default function ImageCropModal({
   onClose,
   imageSrc,
   onCropComplete,
+  onImageProcessingError,
   circular = false,
   aspect,
   isEditMode = false,
@@ -42,6 +44,7 @@ export default function ImageCropModal({
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
   const [scale, setScale] = useState(1);
   const [rotate, setRotate] = useState(0);
+  const imageProcessingErrorSource = useRef<string | null>(null);
 
   // Reset state when imageSrc changes
   useEffect(() => {
@@ -57,6 +60,8 @@ export default function ImageCropModal({
         height: 90,
       });
       setCompletedCrop(undefined);
+    } else if (!isOpen) {
+      imageProcessingErrorSource.current = null;
     }
   }, [imageSrc, isOpen]);
 
@@ -181,9 +186,22 @@ export default function ImageCropModal({
         // onClose artıq MultiImageUpload-da idarə olunur
       }
     } catch (error) {
-      console.error("Crop error:", error);
+      if (onImageProcessingError) {
+        if (imageProcessingErrorSource.current !== imageSrc) {
+          imageProcessingErrorSource.current = imageSrc;
+          onImageProcessingError();
+        }
+      } else {
+        console.error("Crop error:", error);
+      }
     }
-  }, [getCroppedImg, onCropComplete]);
+  }, [getCroppedImg, imageSrc, onCropComplete, onImageProcessingError]);
+
+  const handleImageError = useCallback(() => {
+    if (imageProcessingErrorSource.current === imageSrc) return;
+    imageProcessingErrorSource.current = imageSrc;
+    onImageProcessingError?.();
+  }, [imageSrc, onImageProcessingError]);
 
   if (!isOpen || !imageSrc) return null;
 
@@ -266,6 +284,7 @@ export default function ImageCropModal({
               src={imageSrc}
               alt="Crop target"
               onLoad={onImageLoad}
+              onError={handleImageError}
               style={{
                 transform: `scale(${scale}) rotate(${rotate}deg)`,
                 transformOrigin: 'center',

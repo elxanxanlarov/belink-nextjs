@@ -65,7 +65,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ productToEdit, onCance
         } else if (img.blob) {
           // Yeni şəkil - indi yüklə
           const formData = new FormData();
-          formData.append("file", img.blob, "product.jpg");
+          formData.append("file", img.blob, img.fileName || "product.jpg");
           formData.append("folder", "products");
 
           const res = await fetch("/api/upload", { method: "POST", body: formData });

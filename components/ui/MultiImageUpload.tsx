@@ -11,6 +11,7 @@ export interface UploadedImage {
   url: string;
   isCover: boolean;
   blob?: Blob;
+  fileName?: string;
   isUploaded?: boolean;
 }
 
@@ -32,14 +33,17 @@ export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editFileInputRef = useRef<HTMLInputElement>(null);
   const [pendingFiles, setPendingFiles] = useState<string[]>([]);
+  const [pendingOriginalFiles, setPendingOriginalFiles] = useState<File[]>([]);
   const [currentCropIndex, setCurrentCropIndex] = useState(0);
   const [cropOpen, setCropOpen] = useState(false);
   const [editingImageId, setEditingImageId] = useState<string | null>(null); // Hansı şəkil edit olunur
   const [editingImageSrc, setEditingImageSrc] = useState<string>(""); // Edit olunan şəklin source
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.currentTarget;
+    const files = Array.from(input.files || []);
     if (!files.length) return;
+    input.value = "";
 
     const remaining = maxImages - images.length;
     if (remaining <= 0) {
@@ -48,24 +52,38 @@ export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
     }
 
     const toProcess = files.slice(0, maxImages - images.length);
-    const fileUrls: string[] = [];
+    const results = await Promise.all(
+      toProcess.map(
+        (file) =>
+          new Promise<{ file: File; url: string } | null>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              resolve(
+                typeof reader.result === "string"
+                  ? { file, url: reader.result }
+                  : null
+              );
+            };
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(file);
+          })
+      )
+    );
+    const readableFiles = results.filter(
+      (result): result is { file: File; url: string } => result !== null
+    );
 
-    toProcess.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === "string") {
-          fileUrls.push(reader.result);
-          if (fileUrls.length === toProcess.length) {
-            setPendingFiles(fileUrls);
-            setCurrentCropIndex(0);
-            setCropOpen(true);
-          }
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+    if (readableFiles.length !== toProcess.length) {
+      showToast("Bəzi şəkilləri oxumaq mümkün olmadı.", "error");
+    }
 
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (readableFiles.length) {
+      setPendingFiles(readableFiles.map(({ url }) => url));
+      setPendingOriginalFiles(readableFiles.map(({ file }) => file));
+      setCurrentCropIndex(0);
+      setCropOpen(true);
+    }
+
   };
 
   const handleEditFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -78,21 +96,23 @@ export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
       if (typeof reader.result === "string") {
         setEditingImageSrc(reader.result);
         setPendingFiles([reader.result]);
+        setPendingOriginalFiles([file]);
         setCurrentCropIndex(0);
         setCropOpen(true);
       }
     };
+    reader.onerror = () => showToast("Şəkli oxumaq mümkün olmadı.", "error");
     reader.readAsDataURL(file);
 
     if (editFileInputRef.current) editFileInputRef.current.value = "";
   };
 
-  const handleCropComplete = (blob: Blob, dataUrl: string) => {
+  const handleCropComplete = (blob: Blob, dataUrl: string, fileName?: string) => {
     if (editingImageId) {
       // Şəkil dəyişdirilir - köhnəsini yenilə (cover statusunu saxla)
       const updatedImages = images.map((img) =>
         img.id === editingImageId
-          ? { ...img, url: dataUrl, blob: blob, isUploaded: false }
+          ? { ...img, url: dataUrl, blob, fileName, isUploaded: false }
           : img
       );
       onChange(updatedImages);
@@ -100,6 +120,7 @@ export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
       setEditingImageSrc("");
       setCropOpen(false);
       setPendingFiles([]);
+      setPendingOriginalFiles([]);
       setCurrentCropIndex(0);
     } else {
       // Yeni şəkil əlavə edilir
@@ -108,7 +129,8 @@ export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
         id: crypto.randomUUID(),
         url: dataUrl,
         isCover: isFirst,
-        blob: blob,
+        blob,
+        fileName,
         isUploaded: false,
       };
       onChange([...images, newImg]);
@@ -120,9 +142,24 @@ export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
         // Hamısı bitdi
         setCropOpen(false);
         setPendingFiles([]);
+        setPendingOriginalFiles([]);
         setCurrentCropIndex(0);
       }
     }
+  };
+
+  const handleCropProcessingError = () => {
+    const originalFile = pendingOriginalFiles[currentCropIndex];
+    if (!originalFile) {
+      showToast("Bu şəkli emal etmək mümkün olmadı.", "error");
+      return;
+    }
+
+    handleCropComplete(
+      originalFile,
+      URL.createObjectURL(originalFile),
+      originalFile.name
+    );
   };
 
   const handleCropSkip = () => {
@@ -132,6 +169,7 @@ export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
     } else {
       setCropOpen(false);
       setPendingFiles([]);
+      setPendingOriginalFiles([]);
       setCurrentCropIndex(0);
     }
   };
@@ -139,6 +177,7 @@ export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
   const handleCropCancel = () => {
     setCropOpen(false);
     setPendingFiles([]);
+    setPendingOriginalFiles([]);
     setCurrentCropIndex(0);
     setEditingImageId(null); // Edit mode-dan çıx
     setEditingImageSrc("");
@@ -173,6 +212,7 @@ export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
     setEditingImageId(imageId);
     setEditingImageSrc(imageToEdit.url);
     setPendingFiles([imageToEdit.url]);
+    setPendingOriginalFiles([]);
     setCurrentCropIndex(0);
     setCropOpen(true);
   };
@@ -191,6 +231,7 @@ export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
         onClose={handleCropCancel}
         imageSrc={pendingFiles[currentCropIndex] || ""}
         onCropComplete={handleCropComplete}
+        onImageProcessingError={handleCropProcessingError}
         isEditMode={!!editingImageId}
         onChangeImage={handleChangeImageInEdit}
       />
