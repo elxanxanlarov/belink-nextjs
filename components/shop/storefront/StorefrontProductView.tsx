@@ -12,6 +12,7 @@ import { buildSingleOrderUrl } from "@/lib/shopOrder";
 import { showToast } from "@/lib/swal";
 import type { ShopProduct, ShopSummary, ShopTemplate } from "@/types";
 import { sfBtnOutline, sfBtnPrimary, sfFocus, sfHeading, storefrontThemeStyle } from "./parts";
+import { cldImage } from "@/lib/cloudinaryUrl";
 
 export interface StorefrontProductViewProps {
   shop: ShopSummary;
@@ -116,7 +117,7 @@ function Gallery({
             i === activeIdx ? "border-[var(--sf-accent)]" : "border-transparent opacity-70 hover:opacity-100"
           }`}
         >
-          <Image src={img} alt="" fill unoptimized className="object-cover" />
+          <Image src={cldImage(img, 300)} alt="" fill unoptimized className="object-cover" />
         </button>
       ))}
     </div>
@@ -126,7 +127,7 @@ function Gallery({
     <div className={`flex gap-3 min-w-0 ${thumbs === "column" ? "flex-row" : "flex-col"}`}>
       {thumbs === "column" && thumbList}
       <div className={`relative w-full ${aspect} overflow-hidden rounded-[var(--sf-radius)] bg-[var(--sf-surface)]`}>
-        <Image src={images[activeIdx]} alt={product.title} fill unoptimized priority className={fit} />
+        <Image src={cldImage(images[activeIdx], 1600)} alt={product.title} fill unoptimized priority className={fit} />
         {count > 1 && (
           <>
             <button
@@ -250,7 +251,7 @@ function OtherProductCard({
     <Link href={href} className={`group flex flex-col gap-3 min-w-0 ${sfFocus} ${className}`}>
       <div className={`relative w-full ${aspect} overflow-hidden rounded-[var(--sf-radius)] bg-[var(--sf-surface)]`}>
         <Image
-          src={item.imageUrl}
+          src={cldImage(item.imageUrl, 800)}
           alt={item.title}
           fill
           unoptimized
@@ -465,7 +466,7 @@ function CatalogProduct({ page, product, otherProducts, shopHref, productHref }:
                     className={`flex items-center gap-4 py-3 hover:bg-[var(--sf-surface)] transition-colors duration-200 ${sfFocus}`}
                   >
                     <div className="relative w-16 h-16 shrink-0 overflow-hidden rounded-[var(--sf-radius)] bg-[var(--sf-surface)]">
-                      <Image src={item.imageUrl} alt={item.title} fill unoptimized className="object-cover" />
+                      <Image src={cldImage(item.imageUrl, 300)} alt={item.title} fill unoptimized className="object-cover" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="text-sm font-bold truncate">{item.title}</h3>
@@ -543,7 +544,7 @@ function BentoProduct({ page, product, otherProducts, shop, shopHref, productHre
                 className={`${tile} group relative aspect-square bg-[var(--sf-surface)] ${i === 0 ? "col-span-2 md:row-span-2" : ""} ${sfFocus}`}
               >
                 <Image
-                  src={item.imageUrl}
+                  src={cldImage(item.imageUrl, 400)}
                   alt={item.title}
                   fill
                   unoptimized

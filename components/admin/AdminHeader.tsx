@@ -22,7 +22,9 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
         <h1 className="text-lg font-extrabold text-gray-900">
           {activeTab === "customers"
             ? "Müştərilərin İdarə Edilməsi"
-            : activeTab === "homeShops"
+            : activeTab === "etiraf"
+              ? "Etiraf Linkləri"
+              : activeTab === "homeShops"
               ? "Ana Səhifə Mağazaları"
               : "Ümumi Statistika"}
         </h1>

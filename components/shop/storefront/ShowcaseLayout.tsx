@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { cldImage } from "@/lib/cloudinaryUrl";
 import {
   CartButton,
   CartControl,
@@ -58,7 +59,7 @@ export default function ShowcaseLayout({ sf }: LayoutProps) {
           </div>
           {heroImage && (
             <div className="order-1 md:order-2 relative w-full aspect-[4/3] md:aspect-[4/5] overflow-hidden rounded-[var(--sf-radius)] bg-[var(--sf-surface)]">
-              <Image src={heroImage} alt={sf.shopTitle} fill unoptimized priority className="object-cover" />
+              <Image src={cldImage(heroImage, 1920)} alt={sf.shopTitle} fill unoptimized priority className="object-cover" />
             </div>
           )}
         </section>

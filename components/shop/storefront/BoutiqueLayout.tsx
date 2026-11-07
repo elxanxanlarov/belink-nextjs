@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { cldImage } from "@/lib/cloudinaryUrl";
 import {
   BannerSlider,
   CartButton,
@@ -66,7 +67,7 @@ export default function BoutiqueLayout({ sf }: LayoutProps) {
                 className={`group shrink-0 w-24 sm:w-28 flex flex-col items-center gap-2.5 cursor-pointer ${sfFocus}`}
               >
                 <span className="relative block w-24 h-24 sm:w-28 sm:h-28 overflow-hidden rounded-full border-2 border-[var(--sf-border)] group-hover:border-[var(--sf-accent)] transition-colors duration-200">
-                  <Image src={cat.cover} alt="" fill unoptimized className="object-cover" />
+                  <Image src={cldImage(cat.cover, 800)} alt="" fill unoptimized className="object-cover" />
                 </span>
                 <span className="text-sm font-bold text-center leading-tight">{cat.name}</span>
               </button>

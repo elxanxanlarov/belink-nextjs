@@ -10,6 +10,8 @@ import { AdminStats } from "@/components/admin/AdminStats";
 import { CustomersTable } from "@/components/admin/CustomersTable";
 import { AdminStatsView } from "@/components/admin/AdminStatsView";
 import { FeaturedShopsManager } from "@/components/admin/FeaturedShopsManager";
+import { EtirafInvitesManager } from "@/components/admin/EtirafInvitesManager";
+import { CustomerEtirafsModal } from "@/components/admin/CustomerEtirafsModal";
 import { confirmLogout, showToast } from "@/lib/swal";
 
 export interface AdminClientPageProps {
@@ -26,6 +28,7 @@ export const AdminClientPage: React.FC<AdminClientPageProps> = ({ secretId }) =>
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
+  const [etirafCustomer, setEtirafCustomer] = useState<CustomerUserItem | null>(null);
 
   const loadAdminData = async () => {
     try {
@@ -177,8 +180,11 @@ export const AdminClientPage: React.FC<AdminClientPageProps> = ({ secretId }) =>
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
               onTogglePremium={handleTogglePremium}
+              onShowEtirafs={setEtirafCustomer}
             />
           )}
+
+          {activeTab === "etiraf" && <EtirafInvitesManager />}
 
           {activeTab === "homeShops" && (
             <FeaturedShopsManager customers={customers} onChange={handleFeaturedChange} />
@@ -187,6 +193,10 @@ export const AdminClientPage: React.FC<AdminClientPageProps> = ({ secretId }) =>
           {activeTab === "stats" && <AdminStatsView currentStaff={currentStaff} />}
         </main>
       </div>
+
+      {etirafCustomer && (
+        <CustomerEtirafsModal customer={etirafCustomer} onClose={() => setEtirafCustomer(null)} />
+      )}
     </div>
   );
 };

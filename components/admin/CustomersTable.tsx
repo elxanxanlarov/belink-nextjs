@@ -1,20 +1,23 @@
 "use client";
 
 import React from "react";
-import { Users, Search } from "lucide-react";
+import { Users, Search, Heart, Store } from "lucide-react";
 import { CustomersTableProps } from "@/types";
 import { Table, ColumnDefinition } from "@/components/ui/Table";
 import { Input } from "@/components/ui/Input";
 import { AvatarImage } from "@/components/ui/AvatarImage";
 import { getShopTemplate } from "@/data/shopTemplates";
+import { hasShop } from "@/components/admin/CustomerEtirafsModal";
 
 const TABLE_COLUMNS: ColumnDefinition[] = [
   { header: "Müştəri" },
   { header: "Mağaza Adı" },
   { header: "İstifadəçi Adı" },
   { header: "Məhsul Sayı" },
+  { header: "Etiraf" },
   { header: "Premium" },
   { header: "Qeydiyyat Tarixi" },
+  { header: "Bax", className: "text-right" },
 ];
 
 export const CustomersTable: React.FC<CustomersTableProps> = ({
@@ -22,6 +25,7 @@ export const CustomersTable: React.FC<CustomersTableProps> = ({
   searchQuery,
   onSearchChange,
   onTogglePremium,
+  onShowEtirafs,
 }) => {
   const filteredCustomers = customers.filter((c) => {
     const q = searchQuery.toLowerCase().trim();
@@ -104,6 +108,19 @@ export const CustomersTable: React.FC<CustomersTableProps> = ({
               </span>
             </td>
             <td className="px-6 py-4">
+              {customer.etirafCount > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => onShowEtirafs(customer)}
+                  className="inline-flex items-center gap-1 text-xs font-bold text-[#8b1424] bg-rose-50 border border-rose-100 px-2.5 py-1 rounded-full whitespace-nowrap cursor-pointer hover:bg-rose-100"
+                >
+                  <Heart size={12} fill="currentColor" /> Var ({customer.etirafCount})
+                </button>
+              ) : (
+                <span className="text-xs font-semibold text-gray-400 bg-gray-50 px-2.5 py-1 rounded-full">Yox</span>
+              )}
+            </td>
+            <td className="px-6 py-4">
               <div className="flex items-center gap-2.5">
                 <button
                   type="button"
@@ -135,6 +152,29 @@ export const CustomersTable: React.FC<CustomersTableProps> = ({
                 month: "short",
                 year: "numeric",
               })}
+            </td>
+            <td className="px-6 py-4">
+              <div className="flex items-center justify-end gap-1.5">
+                {hasShop(customer) && (
+                  <a
+                    href={`/${customer.username}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Mağazaya bax"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full border border-gray-200 text-xs font-bold text-gray-700 hover:bg-gray-50 whitespace-nowrap"
+                  >
+                    <Store size={13} /> Mağaza
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => onShowEtirafs(customer)}
+                  title="Etiraflara bax"
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full border border-gray-200 text-xs font-bold text-gray-700 hover:bg-gray-50 whitespace-nowrap cursor-pointer"
+                >
+                  <Heart size={13} /> Etiraflar
+                </button>
+              </div>
             </td>
           </tr>
         ))}

@@ -14,17 +14,18 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Sessiya bitib və ya etibarsızdır." }, { status: 401 });
     }
 
-    const [users, totalProducts, totalStaff] = await Promise.all([
+    const [users, totalProducts, totalStaff, totalEtirafs] = await Promise.all([
       prisma.user.findMany({
         orderBy: { createdAt: "desc" },
         include: {
           _count: {
-            select: { products: true },
+            select: { products: true, etirafs: true },
           },
         },
       }),
       prisma.product.count(),
       prisma.staff.count(),
+      prisma.etiraf.count(),
     ]);
 
     const customers = users.map((u) => ({
@@ -40,6 +41,7 @@ export async function GET(req: NextRequest) {
       shopTemplate: u.shopTemplate,
       featuredOrder: u.featuredOrder ?? null,
       productCount: u._count.products,
+      etirafCount: u._count.etirafs,
       createdAt: u.createdAt.toISOString(),
     }));
 
@@ -49,6 +51,7 @@ export async function GET(req: NextRequest) {
         totalCustomers: users.length,
         totalProducts,
         totalStaff,
+        totalEtirafs,
       },
       currentStaff: session,
     });

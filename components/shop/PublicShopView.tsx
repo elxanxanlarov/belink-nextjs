@@ -21,6 +21,7 @@ import { showToast } from "@/lib/swal";
 import { useShopCart } from "@/lib/useShopCart";
 import { buildSingleOrderUrl, buildWhatsappUrl } from "@/lib/shopOrder";
 import type { ShopCategory as CategoryItem, ShopProduct as ProductItem } from "@/types";
+import { cldImage } from "@/lib/cloudinaryUrl";
 import {
   InstagramIcon,
   TikTokIcon,
@@ -326,7 +327,7 @@ export default function PublicShopView({ user }: { user: UserShopData }) {
                         className="relative w-full h-36 sm:h-44 rounded-2xl overflow-hidden bg-gray-50 border border-gray-100 flex items-center justify-center cursor-pointer"
                       >
                         <Image
-                          src={product.imageUrl}
+                          src={cldImage(product.imageUrl, 800)}
                           alt={product.title}
                           fill
                           unoptimized
@@ -462,7 +463,7 @@ export default function PublicShopView({ user }: { user: UserShopData }) {
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-white border border-gray-200 shrink-0">
-                        <Image src={product.imageUrl} alt={product.title} fill unoptimized className="object-cover" />
+                        <Image src={cldImage(product.imageUrl, 400)} alt={product.title} fill unoptimized className="object-cover" />
                       </div>
                       <div className="flex flex-col min-w-0">
                         <h4 className="text-xs font-bold text-gray-900 truncate">{product.title}</h4>

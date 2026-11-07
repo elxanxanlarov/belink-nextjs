@@ -1,6 +1,6 @@
 export type StaffRole = "ADMIN" | "SUPERADMIN";
 
-export type AdminTabType = "customers" | "homeShops" | "stats";
+export type AdminTabType = "customers" | "etiraf" | "homeShops" | "stats";
 
 export interface StaffUser {
   id: string;
@@ -30,6 +30,7 @@ export interface CustomerUserItem {
   shopTemplate?: string;
   featuredOrder: number | null;
   productCount: number;
+  etirafCount: number;
   createdAt: string;
 }
 
@@ -37,6 +38,40 @@ export interface AdminDashboardStats {
   totalCustomers: number;
   totalProducts: number;
   totalStaff: number;
+  totalEtirafs: number;
+}
+
+export interface EtirafInviteItem {
+  id: string;
+  token: string;
+  url: string;
+  allowPhotos: boolean;
+  allowText: boolean;
+  allowAudio: boolean;
+  maxPhotos: number;
+  note: string | null;
+  usedAt: string | null;
+  createdAt: string;
+  etiraf: {
+    id: string;
+    slug: string;
+    title: string | null;
+    cover: string | null;
+    createdAt: string;
+    user: { id: string; name: string | null; email: string | null; image: string | null };
+  } | null;
+}
+
+export interface CustomerEtirafItem {
+  id: string;
+  slug: string;
+  title: string | null;
+  cover: string | null;
+  photoCount: number;
+  hasMessage: boolean;
+  hasAudio: boolean;
+  design: string;
+  createdAt: string;
 }
 
 export interface AdminLoginFormProps {
@@ -69,6 +104,7 @@ export interface CustomersTableProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onTogglePremium: (id: string, isPremium: boolean) => void;
+  onShowEtirafs: (customer: CustomerUserItem) => void;
 }
 
 export interface FeaturedShopsManagerProps {

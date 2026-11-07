@@ -1,6 +1,10 @@
 import crypto from "node:crypto";
 
-export async function uploadToCloudinary(fileBuffer: Buffer | ArrayBuffer, folder: string = "belink"): Promise<string> {
+export async function uploadToCloudinary(
+  fileBuffer: Buffer | ArrayBuffer,
+  folder: string = "belink",
+  resourceType: "image" | "video" = "image"
+): Promise<string> {
   const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_CLOUD_NAME;
   const apiKey = process.env.CLOUDINARY_API_KEY;
   const apiSecret = process.env.CLOUDINARY_API_SECRET;
@@ -23,7 +27,7 @@ export async function uploadToCloudinary(fileBuffer: Buffer | ArrayBuffer, folde
   formData.append("signature", signature);
   formData.append("folder", folder);
 
-  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`, {
     method: "POST",
     body: formData,
   });

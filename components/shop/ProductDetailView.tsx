@@ -20,6 +20,7 @@ import { useShopCart } from "@/lib/useShopCart";
 import { buildSingleOrderUrl } from "@/lib/shopOrder";
 import { showToast } from "@/lib/swal";
 import type { ShopProduct, ShopSummary } from "@/types";
+import { cldImage } from "@/lib/cloudinaryUrl";
 
 interface ProductDetailViewProps {
   shop: ShopSummary;
@@ -116,7 +117,7 @@ export default function ProductDetailView({
           <div className="flex flex-col gap-3 min-w-0">
             <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-gray-50 border border-gray-100">
               <Image
-                src={allImages[activeIdx]}
+                src={cldImage(allImages[activeIdx], 1600)}
                 alt={product.title}
                 fill
                 unoptimized
@@ -170,7 +171,7 @@ export default function ProductDetailView({
                         : "border-gray-200 hover:border-gray-400"
                     }`}
                   >
-                    <Image src={img} alt={`Şəkil ${i + 1}`} fill unoptimized className="object-cover" />
+                    <Image src={cldImage(img, 300)} alt={`Şəkil ${i + 1}`} fill unoptimized className="object-cover" />
                   </button>
                 ))}
               </div>
@@ -263,7 +264,7 @@ export default function ProductDetailView({
                 >
                   <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-gray-50 border border-gray-100">
                     <Image
-                      src={item.imageUrl}
+                      src={cldImage(item.imageUrl, 800)}
                       alt={item.title}
                       fill
                       unoptimized

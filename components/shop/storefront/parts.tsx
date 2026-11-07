@@ -28,6 +28,7 @@ import {
 import type { CSSProperties } from "react";
 import type { ShopPalette, ShopProduct, ShopTemplate } from "@/types";
 import type { Storefront } from "./useStorefront";
+import { cldImage } from "@/lib/cloudinaryUrl";
 
 export interface LayoutProps {
   sf: Storefront;
@@ -111,7 +112,7 @@ export function ProductImage({
 }) {
   return (
     <Image
-      src={product.imageUrl}
+      src={cldImage(product.imageUrl, 800)}
       alt={product.title}
       fill
       unoptimized
@@ -252,7 +253,7 @@ export function BannerSlider({
       {banners.map((src, index) => (
         <Image
           key={src}
-          src={src}
+          src={cldImage(src, 1920)}
           alt={index === current ? `${alt}, banner ${index + 1}` : ""}
           fill
           unoptimized

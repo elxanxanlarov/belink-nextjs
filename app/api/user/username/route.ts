@@ -4,6 +4,17 @@ import { prisma } from "@/lib/prisma";
 import { sanitizeUsername } from "@/lib/sanitize";
 import { checkRateLimit } from "@/lib/rateLimit";
 
+const RESERVED_USERNAMES = new Set([
+  "etiraf",
+  "dashboard",
+  "admin",
+  "admin_panel",
+  "templates",
+  "api",
+  "login",
+  "belink",
+]);
+
 export async function POST(req: Request) {
   try {
     const session = await auth();
@@ -38,6 +49,14 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: "İstifadəçi adı 3-30 simvol, yalnız kiçik hərflər, rəqəmlər və '_' ola bilər." },
         { status: 400 }
+      );
+    }
+
+    // Saytın öz səhifələri ilə toqquşan adlar (məs. belink.az/etiraf) götürülə bilməz.
+    if (RESERVED_USERNAMES.has(cleanUsername)) {
+      return NextResponse.json(
+        { error: "Bu istifadəçi adı sistem tərəfindən istifadə olunur. Başqa bir ad seçin." },
+        { status: 409 }
       );
     }
 

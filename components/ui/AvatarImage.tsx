@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
+import { optimizeAvatarUrl } from "@/lib/cloudinaryUrl";
 
 export interface AvatarImageProps {
   src?: string | null;
@@ -34,15 +35,16 @@ export const AvatarImage: React.FC<AvatarImageProps> = ({
   }
 
   const isExternal = src.startsWith("http://") || src.startsWith("https://");
+  // Google/Cloudinary-dən ekran sıxlığına uyğun (~3x) kəskin versiya istənilir; əks halda kiçik şəkil böyüdülüb bulanıq görünür.
+  const displaySrc = isExternal ? optimizeAvatarUrl(src, size) : src;
 
   return (
     <Image
-      src={src}
+      src={displaySrc}
       alt={alt}
       width={size}
       height={size}
       unoptimized={isExternal}
-      priority
       onError={() => setHasError(true)}
       className={`rounded-full object-cover border border-emerald-100 flex-shrink-0 transition-opacity duration-200 ${className}`}
       style={{ width: size, height: size }}

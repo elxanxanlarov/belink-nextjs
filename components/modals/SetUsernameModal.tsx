@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useSession } from "next-auth/react";
+import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { UserCheck } from "lucide-react";
 import { Input } from "@/components/ui/Input";
@@ -11,9 +12,13 @@ export default function SetUsernameModal() {
   const [username, setUsername] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const pathname = usePathname();
+
+  // Etiraf müştərilərinə mağaza istifadəçi adı lazım deyil.
+  const isEtirafFlow = pathname === "/etiraf" || pathname?.startsWith("/etiraf/");
 
   const needsUsername =
-    status === "authenticated" && Boolean((session?.user as any)?.needsUsername);
+    !isEtirafFlow && status === "authenticated" && Boolean((session?.user as any)?.needsUsername);
 
   if (!needsUsername) return null;
 

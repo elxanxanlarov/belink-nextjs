@@ -1,4 +1,4 @@
-import { Users, Layers, ShoppingBag, ShieldCheck, Store } from "lucide-react";
+import { Users, Layers, ShoppingBag, ShieldCheck, Store, Heart } from "lucide-react";
 import { AdminDashboardStats, AdminTabType } from "@/types";
 
 export interface NavItem {
@@ -12,6 +12,11 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
     id: "customers",
     label: "Müştərilər",
     icon: Users,
+  },
+  {
+    id: "etiraf",
+    label: "Etiraf",
+    icon: Heart,
   },
   {
     id: "homeShops",
@@ -29,6 +34,7 @@ export const DEFAULT_ADMIN_STATS: AdminDashboardStats = {
   totalCustomers: 0,
   totalProducts: 0,
   totalStaff: 0,
+  totalEtirafs: 0,
 };
 
 export const STAT_CARD_CONFIGS = [
@@ -43,6 +49,12 @@ export const STAT_CARD_CONFIGS = [
     label: "Ümumi Məhsullar",
     icon: ShoppingBag,
     bgClass: "bg-teal-50 text-teal-700",
+  },
+  {
+    key: "totalEtirafs" as keyof AdminDashboardStats,
+    label: "Etiraflar",
+    icon: Heart,
+    bgClass: "bg-rose-50 text-rose-700",
   },
   {
     key: "totalStaff" as keyof AdminDashboardStats,

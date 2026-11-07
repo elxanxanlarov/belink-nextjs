@@ -63,6 +63,7 @@ model User {
   sessions      Session[]
   categories    Category[]
   products      Product[]
+  etirafs       Etiraf[]
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
@@ -112,4 +113,38 @@ model Staff {
   updatedAt DateTime  @updatedAt @map("updated_at")
 
   @@map("staff")
+}
+
+model EtirafInvite {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  token       String    @unique
+  allowPhotos Boolean   @default(true) @map("allow_photos")
+  allowText   Boolean   @default(true) @map("allow_text")
+  allowAudio  Boolean   @default(true) @map("allow_audio")
+  maxPhotos   Int       @default(15) @map("max_photos")
+  note        String?
+  usedAt      DateTime? @map("used_at")
+  usedById    String?   @map("used_by_id") @db.ObjectId
+  etiraf      Etiraf?
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@map("etiraf_invites")
+}
+
+model Etiraf {
+  id        String       @id @default(auto()) @map("_id") @db.ObjectId
+  slug      String       @unique
+  userId    String       @map("user_id") @db.ObjectId
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  inviteId  String       @unique @map("invite_id") @db.ObjectId
+  invite    EtirafInvite @relation(fields: [inviteId], references: [id])
+  title     String?
+  message   String?
+  photos    String[]
+  audioUrl  String?      @map("audio_url")
+  design    String       @default("red")
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("etirafs")
 }
