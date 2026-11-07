@@ -17,7 +17,9 @@ import {
   Plus,
   Type,
   X,
-  GripVertical,
+  Pencil,
+  ChevronLeft,
+  ChevronRight,
   Star,
   Crop,
   RotateCcw,
@@ -275,8 +277,6 @@ export function EtirafWizard({
     );
 
   // Sıralama: ilk şəkil cover-dir (birinci göstərilir və kiçik şəkil kimi istifadə olunur).
-  const [dragId, setDragId] = useState<string | null>(null);
-
   const movePhoto = (id: string, toIndex: number) =>
     setPhotos((prev) => {
       const from = prev.findIndex((p) => p.id === id);
@@ -289,15 +289,12 @@ export function EtirafWizard({
 
   const makeCover = (id: string) => movePhoto(id, 0);
 
-  /** Barmaq/siçan ilə sürüşdürəndə altdakı şəklin yerinə keçir. */
-  const onDragMove = (e: React.PointerEvent) => {
-    if (!dragId) return;
-    const target = document
-      .elementFromPoint(e.clientX, e.clientY)
-      ?.closest<HTMLElement>("[data-photo-id]")?.dataset.photoId;
-    if (!target || target === dragId) return;
-    const toIndex = photos.findIndex((p) => p.id === target);
-    if (toIndex >= 0) movePhoto(dragId, toIndex);
+  /** Şəkli bir addım sola (-1) və ya sağa (+1) keçirir. */
+  const shiftPhoto = (id: string, delta: number) => {
+    const from = photos.findIndex((p) => p.id === id);
+    const to = from + delta;
+    if (from < 0 || to < 0 || to >= photos.length) return;
+    movePhoto(id, to);
   };
 
   /** Hələ yüklənməmiş şəkilləri (eyni anda 3) və səsi yükləyir; təkrar cəhddə artıq yüklənənləri ötürür. */
@@ -426,23 +423,18 @@ export function EtirafWizard({
               >
                 {photos.length > 1 && (
                   <p className="text-[11px] text-gray-400 -mt-1">
-                    <GripVertical size={11} className="inline -mt-0.5" /> ilə sürüşdürüb sıranı dəyiş ·{" "}
+                    <Pencil size={11} className="inline -mt-0.5" /> ilə düzəlt (kəs, yerini dəyiş) ·{" "}
                     <Star size={11} className="inline -mt-0.5" /> ilə cover seç
                   </p>
                 )}
-                <div
-                  className="grid grid-cols-4 gap-2"
-                  onPointerMove={onDragMove}
-                  onPointerUp={() => setDragId(null)}
-                  onPointerCancel={() => setDragId(null)}
-                >
+                <div className="grid grid-cols-4 gap-2">
                   {photos.map((p, i) => (
                     <div
                       key={p.id}
                       data-photo-id={p.id}
-                      className={`relative aspect-square rounded-xl overflow-hidden bg-gray-100 transition-transform duration-150 ${
-                        dragId === p.id ? "scale-105 ring-2 ring-[#c8102e] shadow-xl z-10 opacity-90" : ""
-                      } ${i === 0 ? "ring-2 ring-amber-400" : ""}`}
+                      className={`relative aspect-square rounded-xl overflow-hidden bg-gray-100 ${
+                        i === 0 ? "ring-2 ring-amber-400" : ""
+                      }`}
                     >
                       <button
                         type="button"
@@ -472,20 +464,15 @@ export function EtirafWizard({
                           <Star size={12} />
                         </button>
                       )}
-                      {photos.length > 1 && (
-                        <button
-                          type="button"
-                          aria-label="Sürüşdürüb yerini dəyiş"
-                          title="Sürüşdür"
-                          onPointerDown={(e) => {
-                            e.preventDefault();
-                            setDragId(p.id);
-                          }}
-                          className="absolute bottom-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center cursor-grab active:cursor-grabbing touch-none"
-                        >
-                          <GripVertical size={12} />
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => setViewId(p.id)}
+                        aria-label="Şəkli düzəlt"
+                        title="Düzəlt"
+                        className="absolute bottom-1 right-1 w-6 h-6 rounded-full bg-white text-[#8b1424] shadow flex items-center justify-center cursor-pointer"
+                      >
+                        <Pencil size={12} />
+                      </button>
                       <button
                         type="button"
                         onClick={() => removePhoto(p.id)}
@@ -716,6 +703,30 @@ export function EtirafWizard({
           <div className="relative flex-1 min-h-0 m-4" onClick={() => setViewId(null)}>
             <Image src={viewing.preview} alt="" fill unoptimized className="object-contain" />
           </div>
+          {photos.length > 1 && (() => {
+            const at = photos.findIndex((p) => p.id === viewing.id);
+            return (
+              <div className="flex items-center justify-center gap-3 px-4 pb-3 text-white">
+                <button
+                  type="button"
+                  onClick={() => shiftPhoto(viewing.id, -1)}
+                  disabled={at <= 0}
+                  className="flex items-center gap-1 rounded-full bg-white/15 border border-white/25 px-4 py-2 text-xs font-bold disabled:opacity-30 cursor-pointer"
+                >
+                  <ChevronLeft size={16} /> Sola
+                </button>
+                <span className="text-xs text-white/70 tabular-nums">Sıra: {at + 1}</span>
+                <button
+                  type="button"
+                  onClick={() => shiftPhoto(viewing.id, 1)}
+                  disabled={at >= photos.length - 1}
+                  className="flex items-center gap-1 rounded-full bg-white/15 border border-white/25 px-4 py-2 text-xs font-bold disabled:opacity-30 cursor-pointer"
+                >
+                  Sağa <ChevronRight size={16} />
+                </button>
+              </div>
+            );
+          })()}
           <div className="grid grid-cols-2 gap-2 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
             <button
               type="button"
