@@ -182,3 +182,34 @@ input[type="number"] {
     animation: none;
   }
 }
+
+/* Etiraf — böyüdülmüş şəkil görünüşünün açılış/bağlanış animasiyası */
+@keyframes etiraf-lightbox-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes etiraf-lightbox-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+.etiraf-lightbox-in {
+  animation: etiraf-lightbox-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.etiraf-lightbox-out {
+  animation: etiraf-lightbox-out 0.22s ease-in both;
+}

@@ -191,21 +191,62 @@ export function AudioPlayer({
   );
 }
 
-/** Şəklə toxunanda tam ekran böyüdülmüş görünüş. */
+/** Böyüdülmüş görünüşün fonu — hər dizayna uyğun. */
+const LIGHTBOX_THEMES = {
+  red: {
+    bg: "bg-[radial-gradient(ellipse_at_center,#a3162b_0%,#4a0711_70%,#2a040a_100%)]",
+    text: "text-white",
+    button: "bg-white/15 border border-white/30 text-white hover:bg-white/25",
+    frame: "bg-white",
+    caption: "text-[#8b1424]",
+    thumbRing: "ring-white",
+    petal: "#ff6b81",
+  },
+  polaroid: {
+    bg: "bg-[radial-gradient(ellipse_at_center,#fffaf5_0%,#f3dfd2_70%,#e8cdbd_100%)]",
+    text: "text-[#8b1424]",
+    button: "bg-white/80 border border-rose-200 text-[#8b1424] hover:bg-white",
+    frame: "bg-white",
+    caption: "text-[#8b1424]",
+    thumbRing: "ring-[#8b1424]",
+    petal: "#e2556b",
+  },
+  night: {
+    bg: "etiraf-stars",
+    text: "text-white",
+    button: "bg-white/10 border border-white/25 text-white hover:bg-white/20",
+    frame: "bg-[#fdfbf6]",
+    caption: "text-[#0e1736]",
+    thumbRing: "ring-[#ffd98a]",
+    petal: "#ffd98a",
+  },
+};
+
+/** Şəklə toxunanda tam ekran, animasiyalı və dizayna uyğun bəzədilmiş görünüş. */
 function PhotoLightbox({
   photos,
   index,
+  design,
   onIndex,
   onClose,
 }: {
   photos: string[];
   index: number;
+  design: keyof typeof LIGHTBOX_THEMES;
   onIndex: (i: number) => void;
   onClose: () => void;
 }) {
   const count = photos.length;
+  const t = LIGHTBOX_THEMES[design] ?? LIGHTBOX_THEMES.red;
   const touchX = useRef<number | null>(null);
+  const [drag, setDrag] = useState(0);
+  const [closing, setClosing] = useState(false);
   const go = (delta: number) => onIndex((index + delta + count) % count);
+
+  const close = () => {
+    setClosing(true);
+    setTimeout(onClose, 220);
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -225,67 +266,136 @@ function PhotoLightbox({
   // body-yə portal — səhifədəki digər qatların (alt panel, musiqi düyməsi) üstündə görünsün
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] bg-black flex items-center justify-center"
+      className={`fixed inset-0 z-[100] overflow-hidden flex flex-col ${t.bg} ${t.text} ${
+        closing ? "etiraf-lightbox-out" : "etiraf-lightbox-in"
+      }`}
       role="dialog"
       aria-modal="true"
       aria-label="Şəkil"
-      onClick={onClose}
-      onTouchStart={(e) => (touchX.current = e.touches[0].clientX)}
-      onTouchEnd={(e) => {
-        if (touchX.current === null) return;
-        const dx = e.changedTouches[0].clientX - touchX.current;
-        touchX.current = null;
-        if (Math.abs(dx) > 40 && count > 1) go(dx < 0 ? 1 : -1);
-      }}
     >
-      <div className="relative w-full h-full max-w-3xl" onClick={(e) => e.stopPropagation()}>
-        <Image
-          key={photos[index]}
-          src={cldImage(photos[index], 1600)}
-          alt={`Xatirə ${index + 1}`}
-          fill
-          unoptimized
-          className="object-contain select-none"
-        />
+      <Petals color={t.petal} />
+      {design === "night" && (
+        <svg className="absolute top-16 right-8 w-14 h-14 opacity-90" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" fill="#ffd98a" />
+        </svg>
+      )}
+
+      {/* Üst panel */}
+      <div className="relative z-10 flex items-center justify-between px-4 pt-[max(1rem,env(safe-area-inset-top))]">
+        <span className={`${etirafScript.className} text-2xl font-bold`}>Xatirələrimiz ♡</span>
+        <button
+          type="button"
+          onClick={close}
+          aria-label="Bağla"
+          className={`w-11 h-11 rounded-full flex items-center justify-center backdrop-blur cursor-pointer ${t.button}`}
+        >
+          <X size={22} />
+        </button>
       </div>
 
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Bağla"
-        className="absolute top-4 right-4 w-11 h-11 rounded-full bg-black/55 border border-white/25 text-white flex items-center justify-center cursor-pointer"
+      {/* Şəkillər — sürüşən lent */}
+      <div
+        className="relative z-10 flex-1 min-h-0 overflow-hidden"
+        onTouchStart={(e) => {
+          touchX.current = e.touches[0].clientX;
+        }}
+        onTouchMove={(e) => {
+          if (touchX.current !== null) setDrag(e.touches[0].clientX - touchX.current);
+        }}
+        onTouchEnd={() => {
+          if (touchX.current === null) return;
+          if (Math.abs(drag) > 50 && count > 1) go(drag < 0 ? 1 : -1);
+          touchX.current = null;
+          setDrag(0);
+        }}
       >
-        <X size={22} />
-      </button>
+        <div
+          className={`flex h-full ${drag ? "" : "transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"}`}
+          style={{ transform: `translateX(calc(${-index * 100}% + ${drag}px))` }}
+        >
+          {photos.map((src, i) => {
+            const active = i === index;
+            return (
+              <div
+                key={src + i}
+                className="w-full h-full shrink-0 flex items-center justify-center px-6 py-4"
+                onClick={(e) => e.target === e.currentTarget && close()}
+              >
+                <figure
+                  className={`relative ${t.frame} p-3 pb-14 shadow-[0_30px_70px_rgba(0,0,0,0.45)] transition-all duration-500 ${
+                    active ? "scale-100 opacity-100" : "scale-90 opacity-40"
+                  } ${i % 2 ? "rotate-[1.5deg]" : "rotate-[-1.5deg]"}`}
+                  style={{ width: "min(86vw, 520px, calc((100dvh - 230px) * 0.8))" }}
+                >
+                  <div className="relative w-full aspect-[4/5] bg-[#f4ece6] overflow-hidden">
+                    <Image
+                      src={cldImage(src, 1600)}
+                      alt={`Xatirə ${i + 1}`}
+                      fill
+                      unoptimized
+                      sizes="520px"
+                      className="object-contain select-none"
+                      draggable={false}
+                    />
+                  </div>
+                  <figcaption
+                    className={`absolute inset-x-0 bottom-2 flex items-center justify-center gap-2 ${etirafScript.className} text-2xl ${t.caption}`}
+                  >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.7 4.5c2.1 0 3.6 1.2 4.3 2.6.7-1.4 2.2-2.6 4.3-2.6 3.7 0 5.8 3.9 4.3 7.3C19.5 16.4 12 21 12 21z"
+                        fill="#d0102e"
+                      />
+                    </svg>
+                    {i + 1} / {count}
+                  </figcaption>
+                  {/* Yapışqan lent */}
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 w-24 h-6 bg-white/60 backdrop-blur-sm rotate-[-3deg] shadow-sm" />
+                </figure>
+              </div>
+            );
+          })}
+        </div>
 
+        {count > 1 && (
+          <>
+            <button
+              type="button"
+              onClick={() => go(-1)}
+              aria-label="Əvvəlki şəkil"
+              className={`absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full flex items-center justify-center backdrop-blur cursor-pointer ${t.button}`}
+            >
+              <ChevronLeft size={24} />
+            </button>
+            <button
+              type="button"
+              onClick={() => go(1)}
+              aria-label="Növbəti şəkil"
+              className={`absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full flex items-center justify-center backdrop-blur cursor-pointer ${t.button}`}
+            >
+              <ChevronRight size={24} />
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Kiçik şəkillər */}
       {count > 1 && (
-        <>
-          <span className="absolute top-6 left-1/2 -translate-x-1/2 text-white/80 text-sm font-semibold tabular-nums">
-            {index + 1} / {count}
-          </span>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              go(-1);
-            }}
-            aria-label="Əvvəlki şəkil"
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/55 border border-white/25 text-white flex items-center justify-center cursor-pointer"
-          >
-            <ChevronLeft size={24} />
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              go(1);
-            }}
-            aria-label="Növbəti şəkil"
-            className="absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/55 border border-white/25 text-white flex items-center justify-center cursor-pointer"
-          >
-            <ChevronRight size={24} />
-          </button>
-        </>
+        <div className="relative z-10 flex justify-center gap-2 px-4 pt-2 pb-[max(1.25rem,env(safe-area-inset-bottom))] overflow-x-auto">
+          {photos.map((src, i) => (
+            <button
+              key={src + i}
+              type="button"
+              onClick={() => onIndex(i)}
+              aria-label={`Şəkil ${i + 1}`}
+              className={`relative w-12 h-12 shrink-0 rounded-xl overflow-hidden transition-all cursor-pointer ${
+                i === index ? `ring-2 ${t.thumbRing} scale-105` : "opacity-60"
+              }`}
+            >
+              <Image src={cldImage(src, 160)} alt="" fill unoptimized className="object-cover" />
+            </button>
+          ))}
+        </div>
       )}
     </div>,
     document.body
@@ -306,7 +416,13 @@ function PhotoCarousel({ photos, theme, design }: { photos: string[]; theme: The
   return (
     <div className="w-full flex flex-col items-center gap-4">
       {zoomed && (
-        <PhotoLightbox photos={photos} index={index} onIndex={setIndex} onClose={() => setZoomed(false)} />
+        <PhotoLightbox
+          photos={photos}
+          index={index}
+          design={(design in LIGHTBOX_THEMES ? design : "red") as keyof typeof LIGHTBOX_THEMES}
+          onIndex={setIndex}
+          onClose={() => setZoomed(false)}
+        />
       )}
       <div
         className="relative w-full max-w-[320px] aspect-[4/5]"
