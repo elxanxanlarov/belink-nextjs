@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
-import { ExternalLink, Heart, Loader2, Store, X } from "lucide-react";
+import { ExternalLink, Gift, Loader2, Store, X } from "lucide-react";
 import { CustomerEtirafItem, CustomerUserItem } from "@/types";
 import { cldImage } from "@/lib/cloudinaryUrl";
 import { AvatarImage } from "@/components/ui/AvatarImage";
@@ -77,7 +77,7 @@ export function CustomerEtirafsModal({
             </div>
           ) : etirafs.length === 0 ? (
             <div className="py-10 flex flex-col items-center gap-2 text-center">
-              <Heart size={32} className="text-gray-300" />
+              <Gift size={32} className="text-gray-300" />
               <p className="text-sm font-bold text-gray-600">Bu müştərinin etirafı yoxdur</p>
             </div>
           ) : (
@@ -87,7 +87,7 @@ export function CustomerEtirafsModal({
                   {e.cover ? (
                     <Image src={cldImage(e.cover, 160)} alt="" fill unoptimized className="object-cover" />
                   ) : (
-                    <Heart size={20} className="text-rose-300" />
+                    <Gift size={20} className="text-rose-300" />
                   )}
                 </div>
                 <div className="flex flex-col min-w-0 flex-1">

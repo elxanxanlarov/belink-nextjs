@@ -1,4 +1,4 @@
-import { Users, Layers, ShoppingBag, ShieldCheck, Store, Heart } from "lucide-react";
+import { Users, Layers, ShoppingBag, ShieldCheck, Store, Gift } from "lucide-react";
 import { AdminDashboardStats, AdminTabType } from "@/types";
 
 export interface NavItem {
@@ -16,7 +16,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   {
     id: "etiraf",
     label: "Etiraf",
-    icon: Heart,
+    icon: Gift,
   },
   {
     id: "homeShops",
@@ -53,7 +53,7 @@ export const STAT_CARD_CONFIGS = [
   {
     key: "totalEtirafs" as keyof AdminDashboardStats,
     label: "Etiraflar",
-    icon: Heart,
+    icon: Gift,
     bgClass: "bg-rose-50 text-rose-700",
   },
   {

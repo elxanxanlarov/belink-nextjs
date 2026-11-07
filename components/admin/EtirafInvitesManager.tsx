@@ -7,7 +7,7 @@ import {
   Copy,
   ExternalLink,
   Eye,
-  Heart,
+  Gift,
   ImageIcon,
   Link2,
   Loader2,
@@ -328,7 +328,7 @@ export function EtirafInvitesManager() {
       <div className="bg-white rounded-3xl border border-gray-100 shadow-xs p-5 sm:p-6 flex flex-col gap-5">
         <div className="flex items-start gap-3">
           <div className="w-11 h-11 rounded-2xl bg-rose-50 text-[#c8102e] flex items-center justify-center shrink-0">
-            <Heart size={20} />
+            <Gift size={20} />
           </div>
           <div>
             <h3 className="font-extrabold text-gray-900 text-base">Yeni etiraf linki</h3>
@@ -388,7 +388,7 @@ export function EtirafInvitesManager() {
             isEmpty={invites.length === 0}
             emptyState={
               <div className="p-12 text-center flex flex-col items-center gap-2">
-                <Heart size={36} className="text-gray-300" />
+                <Gift size={36} className="text-gray-300" />
                 <p className="text-sm font-bold text-gray-600">Hələ link yaradılmayıb</p>
               </div>
             }

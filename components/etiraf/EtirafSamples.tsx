@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import Swal from "sweetalert2";
 import Image from "next/image";
-import Link from "next/link";
 import { Check, Eye, ImageIcon, Mic, Music, Type } from "lucide-react";
 import { ETIRAF_DESIGNS, type EtirafDesign } from "@/lib/etirafShared";
-import { ETIRAF_PACKAGES, etirafDemoPath, etirafOrderWhatsappUrl } from "@/lib/etirafDemos";
+import { ETIRAF_PACKAGES, etirafDemoPath, etirafOrderWhatsappUrl, type EtirafPackage } from "@/lib/etirafDemos";
 import { EtirafLogo } from "@/components/etiraf/EtirafLogo";
 
 const DESIGN_SWATCH: Record<EtirafDesign, string> = {
@@ -43,6 +44,38 @@ const includeIcon = (item: string) =>
 
 export function EtirafSamples() {
   const [design, setDesign] = useState<EtirafDesign | null>(null);
+  const [highlight, setHighlight] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+
+  /** Dizayn seçilməyibsə xəbərdarlıq göstərir və seçim bölməsini işıqlandırır. */
+  const requireDesign = (): boolean => {
+    if (design) return true;
+    Swal.fire({
+      icon: "warning",
+      title: "Əvvəlcə dizayn seçin",
+      text: "Nümunəyə baxmaq və sifariş vermək üçün yuxarıdan bir dizayn seçin.",
+      confirmButtonText: "Dizayn seç",
+      buttonsStyling: false,
+      customClass: {
+        popup: "rounded-3xl shadow-2xl font-sans",
+        confirmButton: "px-6 py-2.5 rounded-full font-bold text-sm bg-[#8b1424] text-white cursor-pointer",
+      },
+    }).then(() => {
+      pickerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHighlight(true);
+      setTimeout(() => setHighlight(false), 1800);
+    });
+    return false;
+  };
+
+  const view = (pkg: EtirafPackage) => {
+    if (requireDesign()) router.push(etirafDemoPath(pkg.id, design));
+  };
+
+  const order = (pkg: EtirafPackage) => {
+    if (requireDesign()) window.open(etirafOrderWhatsappUrl(pkg, design), "_blank", "noopener,noreferrer");
+  };
 
   return (
     <main className="flex-1 min-h-dvh bg-[#fdf3ee]">
@@ -54,8 +87,13 @@ export function EtirafSamples() {
 
       <div className="relative -mt-8 mx-auto max-w-lg rounded-t-[2rem] bg-[#fdf3ee] px-4 pt-6 pb-12 flex flex-col gap-5">
         {/* Dizayn seçimi */}
-        <div className="flex flex-col gap-2">
-          <span className="text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Dizayn seç</span>
+        <div
+          ref={pickerRef}
+          className={`flex flex-col gap-2 rounded-3xl p-2 -m-2 transition-shadow ${highlight ? "ring-4 ring-rose-300 animate-pulse" : ""}`}
+        >
+          <span className="text-xs font-bold text-gray-500 uppercase tracking-wider text-center">
+            Dizayn seç {!design && <span className="text-[#c8102e]">*</span>}
+          </span>
           <div className="grid grid-cols-3 gap-2.5">
             {ETIRAF_DESIGNS.map((d) => {
               const active = design === d.id;
@@ -90,16 +128,17 @@ export function EtirafSamples() {
         {/* Paketlər */}
         {ETIRAF_PACKAGES.map((pkg) => (
           <div key={pkg.id} className="rounded-3xl bg-white border border-rose-100 p-3 flex gap-3 shadow-[0_4px_20px_rgba(139,20,36,0.06)]">
-            <Link
-              href={etirafDemoPath(pkg.id, design)}
-              className="relative w-28 shrink-0 rounded-2xl overflow-hidden bg-rose-50"
+            <button
+              type="button"
+              onClick={() => view(pkg)}
+              className="relative w-28 shrink-0 rounded-2xl overflow-hidden bg-rose-50 cursor-pointer"
               aria-label={`${pkg.label} nümunəsinə bax`}
             >
               <Image src={COVERS[pkg.id]} alt="" fill unoptimized className="object-cover" />
               <span className="absolute inset-x-0 bottom-0 bg-black/45 text-white text-[11px] font-bold py-1 text-center">
                 Nümunə
               </span>
-            </Link>
+            </button>
 
             <div className="flex flex-col gap-2 min-w-0 flex-1">
               <div className="flex items-start justify-between gap-2">
@@ -117,20 +156,20 @@ export function EtirafSamples() {
                 ))}
               </ul>
               <div className="grid grid-cols-2 gap-1.5 mt-auto pt-1">
-                <Link
-                  href={etirafDemoPath(pkg.id, design)}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-full border border-rose-200 px-3 py-2 text-xs font-bold text-[#8b1424]"
+                <button
+                  type="button"
+                  onClick={() => view(pkg)}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-full border border-rose-200 px-3 py-2 text-xs font-bold text-[#8b1424] cursor-pointer"
                 >
                   <Eye size={14} /> Bax
-                </Link>
-                <a
-                  href={etirafOrderWhatsappUrl(pkg, design)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[#25d366] px-3 py-2 text-xs font-bold text-white"
+                </button>
+                <button
+                  type="button"
+                  onClick={() => order(pkg)}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[#25d366] px-3 py-2 text-xs font-bold text-white cursor-pointer"
                 >
                   <WhatsAppIcon /> Sifariş ver
-                </a>
+                </button>
               </div>
             </div>
           </div>
