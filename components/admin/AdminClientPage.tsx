@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { AdminDashboardStats, AdminTabType, CustomerUserItem, StaffUser } from "@/types";
-import { DEFAULT_ADMIN_STATS } from "@/data/adminData";
+import { ADMIN_TAB_SLUGS, DEFAULT_ADMIN_STATS, adminTabFromPath } from "@/data/adminData";
 import { AdminLoginForm } from "@/components/admin/AdminLoginForm";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminHeader } from "@/components/admin/AdminHeader";
@@ -24,7 +25,13 @@ export const AdminClientPage: React.FC<AdminClientPageProps> = ({ secretId }) =>
   const [customers, setCustomers] = useState<CustomerUserItem[]>([]);
   const [stats, setStats] = useState<AdminDashboardStats>(DEFAULT_ADMIN_STATS);
 
-  const [activeTab, setActiveTab] = useState<AdminTabType>("customers");
+  // Aktiv bölmə URL-dən oxunur ki, səhifə yenilənəndə eyni bölmədə qalsın.
+  const pathname = usePathname();
+  const activeTab = adminTabFromPath(pathname);
+  const setActiveTab = (tab: AdminTabType) => {
+    const slug = ADMIN_TAB_SLUGS[tab];
+    window.history.pushState(null, "", `/admin-panel/${secretId}${slug ? `/${slug}` : ""}`);
+  };
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loadingData, setLoadingData] = useState(true);

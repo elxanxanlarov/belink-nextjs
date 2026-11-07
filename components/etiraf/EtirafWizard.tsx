@@ -30,6 +30,7 @@ import { showToast } from "@/lib/swal";
 import { EtirafLogo } from "@/components/etiraf/EtirafLogo";
 import { EtirafView } from "@/components/etiraf/EtirafView";
 import { AudioRecorder } from "@/components/etiraf/AudioRecorder";
+import { EtirafSignOutButton } from "@/components/etiraf/EtirafClientBits";
 
 export interface EtirafWizardInvite {
   token: string;
@@ -239,6 +240,11 @@ export function EtirafWizard({
           >
             <ArrowLeft size={20} />
           </button>
+        )}
+        {step !== 2 && (
+          <div className="absolute right-4 top-6">
+            <EtirafSignOutButton email={customer.email} />
+          </div>
         )}
         <EtirafLogo tone="light" size={52} />
       </header>

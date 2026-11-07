@@ -1,8 +1,8 @@
 "use client";
 
 import React from "react";
-import { signIn } from "next-auth/react";
-import { Copy } from "lucide-react";
+import { signIn, signOut } from "next-auth/react";
+import { Copy, LogOut } from "lucide-react";
 import { etirafPublicUrl } from "@/lib/etirafShared";
 import { showToast } from "@/lib/swal";
 
@@ -10,7 +10,8 @@ export function EtirafSignInButton({ callbackUrl }: { callbackUrl: string }) {
   return (
     <button
       type="button"
-      onClick={() => signIn("google", { callbackUrl })}
+      // "select_account" — Google hər dəfə hesab seçimini göstərir ki, başqa hesabla da daxil olmaq mümkün olsun.
+      onClick={() => signIn("google", { redirectTo: callbackUrl }, { prompt: "select_account" })}
       className="w-full max-w-sm h-14 rounded-full bg-[linear-gradient(180deg,#a3162b,#7a0f1e)] text-white font-bold flex items-center justify-center gap-3 shadow-xl shadow-rose-900/30 cursor-pointer"
     >
       <span className="w-7 h-7 rounded-full bg-white flex items-center justify-center">
@@ -23,6 +24,30 @@ export function EtirafSignInButton({ callbackUrl }: { callbackUrl: string }) {
       </span>
       Google ilə daxil ol
     </button>
+  );
+}
+
+/** Hesabdan çıxır və eyni səhifəyə (link açıqdırsa onun giriş ekranına) qaytarır. */
+export function EtirafSignOutButton({
+  email,
+  tone = "light",
+}: {
+  email?: string | null;
+  tone?: "light" | "dark";
+}) {
+  return (
+    <div className={`flex items-center gap-2 ${tone === "light" ? "text-white" : "text-[#8b1424]"}`}>
+      {email && <span className="hidden sm:inline text-xs opacity-80 truncate max-w-[180px]">{email}</span>}
+      <button
+        type="button"
+        onClick={() => signOut({ redirectTo: window.location.pathname })}
+        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-bold cursor-pointer ${
+          tone === "light" ? "bg-white/15 hover:bg-white/25 border border-white/25" : "bg-white border border-rose-200 hover:bg-rose-50"
+        }`}
+      >
+        <LogOut size={14} /> Çıxış et
+      </button>
+    </div>
   );
 }
 

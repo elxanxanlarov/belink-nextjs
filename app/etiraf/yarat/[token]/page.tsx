@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { EtirafLogo } from "@/components/etiraf/EtirafLogo";
 import { EtirafWizard } from "@/components/etiraf/EtirafWizard";
-import { EtirafSignInButton } from "@/components/etiraf/EtirafClientBits";
+import { EtirafSignInButton, EtirafSignOutButton } from "@/components/etiraf/EtirafClientBits";
 
 export const metadata: Metadata = {
   title: "Yeni Etiraf Yarat — Etiraf",
@@ -83,6 +83,12 @@ export default async function EtirafCreatePage({ params }: PageProps) {
             Etiraflarım
           </Link>
         </div>
+        {userId && (
+          <div className="flex flex-col items-center gap-2">
+            <span className="text-xs text-white/60">Başqa hesabla daxil olmaq üçün:</span>
+            <EtirafSignOutButton email={session?.user?.email} />
+          </div>
+        )}
       </Shell>
     );
   }

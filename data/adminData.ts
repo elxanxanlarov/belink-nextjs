@@ -63,3 +63,17 @@ export const STAT_CARD_CONFIGS = [
     bgClass: "bg-amber-50 text-amber-600",
   },
 ];
+
+/** Hər bölmənin URL hissəsi: /admin-panel/{id}/{slug}. Müştərilər əsas ünvandır. */
+export const ADMIN_TAB_SLUGS: Record<AdminTabType, string> = {
+  customers: "",
+  etiraf: "etiraf",
+  homeShops: "magaza",
+  stats: "statistika",
+};
+
+export function adminTabFromPath(pathname: string | null): AdminTabType {
+  const last = pathname?.split("/").filter(Boolean)[2] ?? "";
+  const entry = Object.entries(ADMIN_TAB_SLUGS).find(([, slug]) => slug === last);
+  return (entry?.[0] as AdminTabType) ?? "customers";
+}

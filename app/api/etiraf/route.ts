@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rateLimit";
-import { generateSlug, validateEtirafPayload } from "@/lib/etiraf";
+import { UNUSED_INVITE, generateSlug, validateEtirafPayload } from "@/lib/etiraf";
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
 
   // Linki atomik olaraq "istifadə olunub" kimi işarələyirik ki, eyni linklə iki etiraf yaranmasın.
   const claim = await prisma.etirafInvite.updateMany({
-    where: { id: invite.id, usedAt: null },
+    where: { id: invite.id, ...UNUSED_INVITE },
     data: { usedAt: new Date(), usedById: userId },
   });
   if (claim.count === 0) {

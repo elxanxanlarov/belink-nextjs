@@ -2,9 +2,26 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
-import { Check, Copy, ExternalLink, Heart, ImageIcon, Link2, Loader2, Mic, Plus, Trash2, Type } from "lucide-react";
+import {
+  Check,
+  Copy,
+  ExternalLink,
+  Eye,
+  Heart,
+  ImageIcon,
+  Link2,
+  Loader2,
+  Mic,
+  Pencil,
+  Plus,
+  Sparkles,
+  Trash2,
+  Type,
+  X,
+} from "lucide-react";
 import { EtirafInviteItem } from "@/types";
-import { ETIRAF_PHOTOS_HARD_MAX, defaultMaxPhotos } from "@/lib/etirafShared";
+import { ETIRAF_DESIGNS, ETIRAF_PHOTOS_HARD_MAX, defaultMaxPhotos, type EtirafDesign } from "@/lib/etirafShared";
+import { ETIRAF_DEMOS, etirafDemoUrl } from "@/lib/etirafDemos";
 import { cldImage } from "@/lib/cloudinaryUrl";
 import { showToast } from "@/lib/swal";
 import { Table, ColumnDefinition } from "@/components/ui/Table";
@@ -22,6 +39,27 @@ const copy = (text: string, label = "Link kopyalandı") => {
   navigator.clipboard?.writeText(text);
   showToast(label, "success");
 };
+
+interface InviteOptions {
+  allowPhotos: boolean;
+  allowText: boolean;
+  allowAudio: boolean;
+  /** null — seçimə görə avtomatik (15 / 10) */
+  maxPhotos: number | null;
+  note: string;
+}
+
+const DEFAULT_OPTIONS: InviteOptions = { allowPhotos: true, allowText: true, allowAudio: true, maxPhotos: null, note: "" };
+
+const effectiveMax = (o: InviteOptions) => o.maxPhotos ?? defaultMaxPhotos(o);
+
+const toPayload = (o: InviteOptions) => ({
+  allowPhotos: o.allowPhotos,
+  allowText: o.allowText,
+  allowAudio: o.allowAudio,
+  maxPhotos: effectiveMax(o),
+  note: o.note,
+});
 
 function TypeToggle({
   active,
@@ -56,19 +94,192 @@ function TypeToggle({
   );
 }
 
+/** Link seçimləri — həm yeni link, həm də düzəltmə üçün. */
+function InviteOptionsFields({ value, onChange }: { value: InviteOptions; onChange: (v: InviteOptions) => void }) {
+  const set = (patch: Partial<InviteOptions>) => onChange({ ...value, ...patch });
+  return (
+    <>
+      <div className="flex flex-col gap-2">
+        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Məzmun növləri</span>
+        <div className="flex flex-wrap gap-2">
+          <TypeToggle active={value.allowPhotos} onClick={() => set({ allowPhotos: !value.allowPhotos })} icon={<ImageIcon size={16} />} label="Şəkil" />
+          <TypeToggle active={value.allowText} onClick={() => set({ allowText: !value.allowText })} icon={<Type size={16} />} label="Yazı" />
+          <TypeToggle active={value.allowAudio} onClick={() => set({ allowAudio: !value.allowAudio })} icon={<Mic size={16} />} label="Səs" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3">
+        <label className={`flex flex-col gap-1.5 ${value.allowPhotos ? "" : "opacity-40 pointer-events-none"}`}>
+          <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Maks. şəkil</span>
+          <input
+            type="number"
+            min={1}
+            max={ETIRAF_PHOTOS_HARD_MAX}
+            value={effectiveMax(value)}
+            onChange={(e) =>
+              set({ maxPhotos: Math.max(1, Math.min(ETIRAF_PHOTOS_HARD_MAX, Number(e.target.value) || 1)) })
+            }
+            className="rounded-2xl border border-gray-200 px-4 py-2.5 text-sm font-bold outline-none focus:border-[#8b1424]"
+          />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Qeyd (istəyə bağlı)</span>
+          <input
+            value={value.note}
+            onChange={(e) => set({ note: e.target.value })}
+            maxLength={120}
+            placeholder="Məs. Aysel, +994 50 ..."
+            className="rounded-2xl border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-[#8b1424]"
+          />
+        </label>
+      </div>
+    </>
+  );
+}
+
+function EditInviteModal({
+  invite,
+  onClose,
+  onSaved,
+}: {
+  invite: EtirafInviteItem;
+  onClose: () => void;
+  onSaved: (updated: Partial<EtirafInviteItem> & { id: string }) => void;
+}) {
+  const [options, setOptions] = useState<InviteOptions>({
+    allowPhotos: invite.allowPhotos,
+    allowText: invite.allowText,
+    allowAudio: invite.allowAudio,
+    maxPhotos: invite.allowPhotos ? invite.maxPhotos : null,
+    note: invite.note || "",
+  });
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/etiraf-invites/${invite.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(toPayload(options)),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || "Dəyişiklik yadda saxlanılmadı.");
+      onSaved(data.invite);
+      showToast("Link yeniləndi", "success");
+      onClose();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Xəta baş verdi.", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl p-5 sm:p-6 flex flex-col gap-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="font-extrabold text-gray-900">Linki düzəlt</h3>
+            <p className="text-xs text-gray-400 mt-0.5 truncate">{invite.url}</p>
+          </div>
+          <button onClick={onClose} aria-label="Bağla" className="p-2 rounded-full hover:bg-gray-100 text-gray-500 cursor-pointer">
+            <X size={18} />
+          </button>
+        </div>
+        <InviteOptionsFields value={options} onChange={setOptions} />
+        <p className="text-xs text-gray-400 -mt-2">
+          Link eyni qalır — müştəri səhifəni yenilədikdə yeni seçimləri görəcək.
+        </p>
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving}
+          className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#8b1424] text-white text-sm font-bold hover:bg-[#6b0a17] disabled:opacity-60 cursor-pointer"
+        >
+          {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+          Yadda saxla
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function DemoLinksCard() {
+  const [design, setDesign] = useState<EtirafDesign | "">("");
+  return (
+    <div className="bg-white rounded-3xl border border-gray-100 shadow-xs p-5 sm:p-6 flex flex-col gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+            <Sparkles size={20} />
+          </div>
+          <div>
+            <h3 className="font-extrabold text-gray-900 text-base">Nümunə linklər</h3>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Müştəriyə göndərin — QR oxunanda açılan səhifə belə görünür.
+            </p>
+          </div>
+        </div>
+        <select
+          value={design}
+          onChange={(e) => setDesign(e.target.value as EtirafDesign | "")}
+          className="rounded-full border border-gray-200 px-4 py-2 text-xs font-bold text-gray-700 outline-none focus:border-[#8b1424] cursor-pointer"
+          aria-label="Dizayn"
+        >
+          <option value="">Dizayn: avtomatik</option>
+          {ETIRAF_DESIGNS.map((d) => (
+            <option key={d.id} value={d.id}>
+              Dizayn: {d.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {ETIRAF_DEMOS.map((demo) => {
+          const url = etirafDemoUrl(demo.id, design || null);
+          return (
+            <div key={demo.id} className="flex items-center gap-2 rounded-2xl border border-gray-100 px-3 py-2.5">
+              <div className="flex items-center gap-1 text-gray-400 shrink-0">
+                {demo.photos && <ImageIcon size={14} />}
+                {demo.text && <Type size={14} />}
+                {demo.audio && <Mic size={14} />}
+              </div>
+              <span className="text-sm font-bold text-gray-800 flex-1 truncate">{demo.label}</span>
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`${demo.label} nümunəsinə bax`}
+                title="Bax"
+                className="p-2 rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50"
+              >
+                <Eye size={14} />
+              </a>
+              <button
+                type="button"
+                onClick={() => copy(url, "Nümunə link kopyalandı")}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-[#8b1424] text-white text-xs font-bold hover:bg-[#6b0a17] cursor-pointer whitespace-nowrap"
+              >
+                <Copy size={12} /> Kopyala
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function EtirafInvitesManager() {
   const [invites, setInvites] = useState<EtirafInviteItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [allowPhotos, setAllowPhotos] = useState(true);
-  const [allowText, setAllowText] = useState(true);
-  const [allowAudio, setAllowAudio] = useState(true);
-  const [customMax, setCustomMax] = useState<number | null>(null);
-  const [note, setNote] = useState("");
+  const [options, setOptions] = useState<InviteOptions>(DEFAULT_OPTIONS);
   const [lastUrl, setLastUrl] = useState<string | null>(null);
-
-  // Admin limiti əllə dəyişməyibsə, seçimə görə 15 / 10 avtomatik götürülür.
-  const maxPhotos = customMax ?? defaultMaxPhotos({ allowPhotos, allowText, allowAudio });
+  const [editing, setEditing] = useState<EtirafInviteItem | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -99,7 +310,7 @@ export function EtirafInvitesManager() {
   }, []);
 
   const create = async () => {
-    if (!allowPhotos && !allowText && !allowAudio) {
+    if (!options.allowPhotos && !options.allowText && !options.allowAudio) {
       showToast("Ən azı bir məzmun növü seçin.", "error");
       return;
     }
@@ -108,13 +319,13 @@ export function EtirafInvitesManager() {
       const res = await fetch("/api/admin/etiraf-invites", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ allowPhotos, allowText, allowAudio, maxPhotos, note }),
+        body: JSON.stringify(toPayload(options)),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.error || "Link yaradıla bilmədi.");
       setLastUrl(data.invite.url);
       copy(data.invite.url, "Link yaradıldı və kopyalandı");
-      setNote("");
+      setOptions((o) => ({ ...o, note: "" }));
       load();
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Xəta baş verdi.", "error");
@@ -157,40 +368,7 @@ export function EtirafInvitesManager() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-2">
-          <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Məzmun növləri</span>
-          <div className="flex flex-wrap gap-2">
-            <TypeToggle active={allowPhotos} onClick={() => setAllowPhotos((v) => !v)} icon={<ImageIcon size={16} />} label="Şəkil" />
-            <TypeToggle active={allowText} onClick={() => setAllowText((v) => !v)} icon={<Type size={16} />} label="Yazı" />
-            <TypeToggle active={allowAudio} onClick={() => setAllowAudio((v) => !v)} icon={<Mic size={16} />} label="Səs" />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3">
-          <label className={`flex flex-col gap-1.5 ${allowPhotos ? "" : "opacity-40 pointer-events-none"}`}>
-            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Maks. şəkil</span>
-            <input
-              type="number"
-              min={1}
-              max={ETIRAF_PHOTOS_HARD_MAX}
-              value={maxPhotos}
-              onChange={(e) =>
-                setCustomMax(Math.max(1, Math.min(ETIRAF_PHOTOS_HARD_MAX, Number(e.target.value) || 1)))
-              }
-              className="rounded-2xl border border-gray-200 px-4 py-2.5 text-sm font-bold outline-none focus:border-[#8b1424]"
-            />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Qeyd (istəyə bağlı)</span>
-            <input
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              maxLength={120}
-              placeholder="Məs. Aysel, +994 50 ..."
-              className="rounded-2xl border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-[#8b1424]"
-            />
-          </label>
-        </div>
+        <InviteOptionsFields value={options} onChange={setOptions} />
 
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
           <button
@@ -218,6 +396,8 @@ export function EtirafInvitesManager() {
           )}
         </div>
       </div>
+
+      <DemoLinksCard />
 
       {/* Linklər */}
       <div className="bg-white rounded-3xl border border-gray-100 shadow-xs overflow-hidden">
@@ -325,6 +505,15 @@ export function EtirafInvitesManager() {
                         </button>
                         <button
                           type="button"
+                          onClick={() => setEditing(invite)}
+                          aria-label="Linki düzəlt"
+                          title="Düzəlt"
+                          className="p-2 rounded-full text-gray-600 hover:bg-gray-100 cursor-pointer"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => revoke(invite.id)}
                           aria-label="Linki ləğv et"
                           title="Linki ləğv et"
@@ -341,6 +530,16 @@ export function EtirafInvitesManager() {
           </Table>
         )}
       </div>
+
+      {editing && (
+        <EditInviteModal
+          invite={editing}
+          onClose={() => setEditing(null)}
+          onSaved={(updated) =>
+            setInvites((prev) => prev.map((i) => (i.id === updated.id ? { ...i, ...updated } : i)))
+          }
+        />
+      )}
     </div>
   );
 }

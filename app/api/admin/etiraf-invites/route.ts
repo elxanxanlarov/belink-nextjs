@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAdminToken } from "@/lib/adminAuth";
-import {
-  ETIRAF_PHOTOS_HARD_MAX,
-  defaultMaxPhotos,
-  etirafInviteUrl,
-  generateInviteToken,
-} from "@/lib/etiraf";
+import { etirafInviteUrl, generateInviteToken, normalizeInviteOptions } from "@/lib/etiraf";
 
 function getAdmin(req: NextRequest) {
   const token = req.cookies.get("belink_admin_token")?.value;
@@ -76,25 +71,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Yanlış sorğu." }, { status: 400 });
   }
 
-  const allowance = {
-    allowPhotos: body.allowPhotos !== false,
-    allowText: body.allowText !== false,
-    allowAudio: body.allowAudio !== false,
-  };
-
-  if (!allowance.allowPhotos && !allowance.allowText && !allowance.allowAudio) {
-    return NextResponse.json({ error: "Ən azı bir məzmun növü seçilməlidir." }, { status: 400 });
+  const options = normalizeInviteOptions(body);
+  if (!options.ok) {
+    return NextResponse.json({ error: options.error }, { status: 400 });
   }
-
-  let maxPhotos = Number.isInteger(body.maxPhotos) ? body.maxPhotos : defaultMaxPhotos(allowance);
-  maxPhotos = Math.max(1, Math.min(ETIRAF_PHOTOS_HARD_MAX, maxPhotos));
-  if (!allowance.allowPhotos) maxPhotos = 0;
-
-  const note = typeof body.note === "string" ? body.note.trim().slice(0, 120) || null : null;
 
   try {
     const invite = await prisma.etirafInvite.create({
-      data: { token: generateInviteToken(), ...allowance, maxPhotos, note },
+      data: { token: generateInviteToken(), ...options.data, usedAt: null, usedById: null },
     });
 
     return NextResponse.json({

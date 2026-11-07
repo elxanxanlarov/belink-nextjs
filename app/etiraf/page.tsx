@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { cldImage } from "@/lib/cloudinaryUrl";
 import { EtirafLogo } from "@/components/etiraf/EtirafLogo";
 import { EtirafQrButton } from "@/components/etiraf/EtirafQrButton";
-import { CopyEtirafLink, EtirafSignInButton } from "@/components/etiraf/EtirafClientBits";
+import { CopyEtirafLink, EtirafSignInButton, EtirafSignOutButton } from "@/components/etiraf/EtirafClientBits";
 
 export const metadata: Metadata = {
   title: "Etiraf — Sevdiyinə unudulmaz sürpriz hazırla",
@@ -48,7 +48,10 @@ export default async function EtirafHomePage() {
 
   return (
     <main className="flex-1 min-h-dvh bg-[#fdf3ee]">
-      <header className="bg-[linear-gradient(180deg,#8b1424,#6b0a17)] pt-6 pb-14 px-4 text-center text-white">
+      <header className="relative bg-[linear-gradient(180deg,#8b1424,#6b0a17)] pt-6 pb-14 px-4 text-center text-white">
+        <div className="absolute right-4 top-6">
+          <EtirafSignOutButton email={session.user?.email} />
+        </div>
         <EtirafLogo tone="light" size={52} />
         <p className="mt-3 text-sm text-white/85">Xoş gəldin, {session.user?.name?.split(" ")[0] || "dost"}! 👋</p>
       </header>

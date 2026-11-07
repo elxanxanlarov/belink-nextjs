@@ -275,6 +275,7 @@ export function EtirafView({
   const design = (data.design in THEMES ? data.design : "red") as keyof typeof THEMES;
   const theme = THEMES[design];
   const [opened, setOpened] = useState(!withIntro);
+  const audioOnly = Boolean(data.audioUrl) && data.photos.length === 0 && !data.message;
 
   return (
     <div
@@ -287,7 +288,12 @@ export function EtirafView({
         </svg>
       )}
 
-      <div className="relative z-10 mx-auto max-w-md px-6 pt-8 pb-16 flex flex-col items-center gap-7">
+      <div
+        className={`relative z-10 mx-auto max-w-md px-6 pt-8 pb-16 flex flex-col items-center gap-7 ${
+          // Şəkil yoxdursa məzmun ekranın ortasında görünsün.
+          data.photos.length === 0 ? (preview ? "min-h-[640px] justify-center" : "min-h-dvh justify-center") : ""
+        }`}
+      >
         <EtirafLogo tone={theme.logo} size={58} />
 
         {data.title && (
@@ -303,6 +309,18 @@ export function EtirafView({
             >
               {data.message}
             </p>
+          </div>
+        )}
+
+        {audioOnly && (
+          <div className="flex flex-col items-center gap-3 my-4">
+            <svg className="w-28 h-28 etiraf-gift-bounce drop-shadow-[0_10px_30px_rgba(0,0,0,0.35)]" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.7 4.5c2.1 0 3.6 1.2 4.3 2.6.7-1.4 2.2-2.6 4.3-2.6 3.7 0 5.8 3.9 4.3 7.3C19.5 16.4 12 21 12 21z"
+                fill={design === "night" ? "#ffd98a" : "#e11d48"}
+              />
+            </svg>
+            <p className={`${etirafScript.className} text-3xl text-center ${theme.title}`}>Sənin üçün bir səsli mesaj var...</p>
           </div>
         )}
 
@@ -326,7 +344,7 @@ export function EtirafView({
         <button
           type="button"
           onClick={() => setOpened(true)}
-          className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-6 bg-[radial-gradient(ellipse_at_center,#a3162b_0%,#4a0711_100%)] text-white cursor-pointer"
+          className="fixed inset-0 z-30 flex flex-col items-center justify-center gap-6 bg-[radial-gradient(ellipse_at_center,#a3162b_0%,#4a0711_100%)] text-white cursor-pointer"
         >
           <EtirafLogo tone="light" size={72} />
           <div className="etiraf-gift-bounce w-28 h-28 rounded-[2rem] bg-white/15 border border-white/30 flex items-center justify-center">
