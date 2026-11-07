@@ -20,12 +20,18 @@ export interface EtirafAllowance {
   allowPhotos: boolean;
   allowText: boolean;
   allowAudio: boolean;
+  /** Arxa fon musiqisi */
+  allowMusic?: boolean;
 }
 
-/** Hər üç növ açıqdırsa 15, əks halda 10 şəkil. */
+/** Şəkil ilə birlikdə ən azı 3 məzmun növü açıqdırsa 15, əks halda 10 şəkil. */
 export function defaultMaxPhotos(a: EtirafAllowance): number {
-  return a.allowPhotos && a.allowText && a.allowAudio ? ETIRAF_PHOTOS_ALL_TYPES : ETIRAF_PHOTOS_DEFAULT;
+  const types = [a.allowPhotos, a.allowText, a.allowAudio, Boolean(a.allowMusic)].filter(Boolean).length;
+  return a.allowPhotos && types >= 3 ? ETIRAF_PHOTOS_ALL_TYPES : ETIRAF_PHOTOS_DEFAULT;
 }
+
+/** Fon musiqisi faylının maksimum ölçüsü (birbaşa Cloudinary-yə yüklənir). */
+export const ETIRAF_MUSIC_MAX_BYTES = 15 * 1024 * 1024;
 
 export const ETIRAF_BASE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://belink.az").replace(/\/$/, "");
 

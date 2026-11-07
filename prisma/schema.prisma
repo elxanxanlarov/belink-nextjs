@@ -38,34 +38,34 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  id            String     @id @default(auto()) @map("_id") @db.ObjectId
   name          String?
-  email         String?   @unique
-  emailVerified DateTime? @map("email_verified")
+  email         String?    @unique
+  emailVerified DateTime?  @map("email_verified")
   image         String?
-  username      String?   @unique
-  shopName      String?   @map("shop_name")
+  username      String?    @unique
+  shopName      String?    @map("shop_name")
   bio           String?
-  whatsappPhone String?   @map("whatsapp_phone")
+  whatsappPhone String?    @map("whatsapp_phone")
   instagram     String?
   tiktok        String?
   linkedin      String?
   twitter       String?
   facebook      String?
   youtube       String?
-  isFeatured    Boolean   @default(false) @map("is_featured")
-  featuredOrder Int?      @map("featured_order")
-  isPremium     Boolean   @default(false) @map("is_premium")
-  shopTemplate  String    @default("classic") @map("shop_template")
-  shopPalette   String?   @map("shop_palette")
+  isFeatured    Boolean    @default(false) @map("is_featured")
+  featuredOrder Int?       @map("featured_order")
+  isPremium     Boolean    @default(false) @map("is_premium")
+  shopTemplate  String     @default("classic") @map("shop_template")
+  shopPalette   String?    @map("shop_palette")
   banners       String[]
   accounts      Account[]
   sessions      Session[]
   categories    Category[]
   products      Product[]
   etirafs       Etiraf[]
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
 
   @@map("users")
 }
@@ -121,6 +121,8 @@ model EtirafInvite {
   allowPhotos Boolean   @default(true) @map("allow_photos")
   allowText   Boolean   @default(true) @map("allow_text")
   allowAudio  Boolean   @default(true) @map("allow_audio")
+  allowMusic  Boolean   @default(false) @map("allow_music")
+  packageId   String?   @map("package_id")
   maxPhotos   Int       @default(15) @map("max_photos")
   note        String?
   usedAt      DateTime? @map("used_at")
@@ -132,19 +134,21 @@ model EtirafInvite {
 }
 
 model Etiraf {
-  id        String       @id @default(auto()) @map("_id") @db.ObjectId
-  slug      String       @unique
-  userId    String       @map("user_id") @db.ObjectId
-  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  inviteId  String       @unique @map("invite_id") @db.ObjectId
-  invite    EtirafInvite @relation(fields: [inviteId], references: [id])
-  title     String?
-  message   String?
-  photos    String[]
-  audioUrl  String?      @map("audio_url")
-  design    String       @default("red")
-  createdAt DateTime     @default(now()) @map("created_at")
+  id            String       @id @default(auto()) @map("_id") @db.ObjectId
+  slug          String       @unique
+  userId        String       @map("user_id") @db.ObjectId
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  inviteId      String       @unique @map("invite_id") @db.ObjectId
+  invite        EtirafInvite @relation(fields: [inviteId], references: [id])
+  title         String?
+  message       String?
+  photos        String[]
+  audioUrl      String?      @map("audio_url")
+  audioDuration Int?         @map("audio_duration")
+  musicUrl      String?      @map("music_url")
+  design        String       @default("red")
+  createdAt     DateTime     @default(now()) @map("created_at")
 
   @@index([userId])
   @@map("etirafs")
-}
+}

@@ -17,6 +17,8 @@ const DESIGN_SWATCH: Record<EtirafDesign, string> = {
 const COVERS: Record<string, string> = {
   sekil: "/demo/gul-lale.jpg",
   "sekil-musiqi": "/demo/nar-sham.jpg",
+  "sekil-metn": "/demo/gul-buket.jpg",
+  "sekil-metn-musiqi": "/demo/zer-uzuk.jpg",
   tam: "/demo/gul-urek.jpg",
 };
 

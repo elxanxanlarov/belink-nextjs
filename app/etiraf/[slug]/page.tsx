@@ -13,7 +13,7 @@ const getEtiraf = cache(async (slug: string) => {
   if (!/^[a-z0-9]{6,16}$/.test(slug)) return null;
   return prisma.etiraf.findUnique({
     where: { slug },
-    select: { title: true, message: true, photos: true, audioUrl: true, design: true },
+    select: { title: true, message: true, photos: true, audioUrl: true, audioDuration: true, musicUrl: true, design: true },
   });
 });
 

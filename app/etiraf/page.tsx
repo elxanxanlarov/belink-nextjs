@@ -43,7 +43,7 @@ export default async function EtirafHomePage() {
   const etirafs = await prisma.etiraf.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
-    select: { id: true, slug: true, title: true, message: true, photos: true, audioUrl: true, createdAt: true },
+    select: { id: true, slug: true, title: true, message: true, photos: true, audioUrl: true, musicUrl: true, createdAt: true },
   });
 
   return (
@@ -84,6 +84,7 @@ export default async function EtirafHomePage() {
                     e.photos.length ? `${e.photos.length} şəkil` : null,
                     e.message ? "1 mesaj" : null,
                     e.audioUrl ? "1 audio" : null,
+                    e.musicUrl ? "musiqi" : null,
                   ]
                     .filter(Boolean)
                     .join(" • ")}{" "}

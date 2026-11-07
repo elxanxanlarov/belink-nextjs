@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Mic, Square, Trash2, Upload } from "lucide-react";
-import { ETIRAF_AUDIO_MAX_SECONDS } from "@/lib/etirafShared";
+import { Mic, Music, Square, Trash2, Upload } from "lucide-react";
+import { ETIRAF_AUDIO_MAX_SECONDS, ETIRAF_MUSIC_MAX_BYTES } from "@/lib/etirafShared";
 import { showToast } from "@/lib/swal";
+import { AudioPlayer } from "@/components/etiraf/EtirafView";
 
 const MIME_CANDIDATES = ["audio/webm;codecs=opus", "audio/mp4", "audio/webm", "audio/ogg;codecs=opus"];
 
@@ -15,6 +16,109 @@ export interface LocalAudio {
   preview: string;
   /** Yükləndikdən sonra Cloudinary ünvanı */
   url?: string;
+  /** Cihazda ölçülmüş real uzunluq (saniyə) */
+  duration?: number | null;
+}
+
+/**
+ * Səsin real uzunluğunu faylı açıb ölçür. Chrome-un MediaRecorder ilə yazdığı webm fayllarında
+ * uzunluq məlumatı olmur və brauzer onu səhv (məs. 8:49) göstərir.
+ */
+export async function measureAudioDuration(blob: Blob): Promise<number | null> {
+  try {
+    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const ctx = new Ctx();
+    const buffer = await ctx.decodeAudioData(await blob.arrayBuffer());
+    ctx.close().catch(() => {});
+    return Number.isFinite(buffer.duration) && buffer.duration > 0 ? Math.max(1, Math.round(buffer.duration)) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Fon musiqisini (böyük fayl) imzalı sorğu ilə birbaşa Cloudinary-yə yükləyir. */
+export async function uploadMusic(blob: Blob, fileName: string): Promise<string> {
+  const signRes = await fetch("/api/upload/sign", { method: "POST" });
+  const sign = await signRes.json().catch(() => null);
+  if (!signRes.ok || !sign?.signature) throw new Error(sign?.error || "Musiqi yüklənmədi.");
+  const formData = new FormData();
+  formData.append("file", blob, fileName);
+  formData.append("api_key", sign.apiKey);
+  formData.append("timestamp", String(sign.timestamp));
+  formData.append("signature", sign.signature);
+  formData.append("folder", sign.folder);
+  const res = await fetch(sign.uploadUrl, { method: "POST", body: formData });
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data?.secure_url) throw new Error(data?.error?.message || "Musiqi yüklənmədi.");
+  return data.secure_url as string;
+}
+
+/** Fon musiqisi seçimi — fayl cihazda qalır, "Təsdiqlə"-dən sonra yüklənir. */
+export function MusicPicker({
+  value,
+  onChange,
+}: {
+  value: LocalAudio | null;
+  onChange: (audio: LocalAudio | null) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (file.type && !file.type.startsWith("audio/")) {
+      showToast("Yalnız musiqi (audio) faylı seçin.", "error");
+      return;
+    }
+    if (file.size > ETIRAF_MUSIC_MAX_BYTES) {
+      showToast("Musiqi faylı 15 MB-dan böyük olmamalıdır.", "error");
+      return;
+    }
+    if (value) URL.revokeObjectURL(value.preview);
+    onChange({ blob: file, fileName: file.name, preview: URL.createObjectURL(file) });
+  };
+
+  if (value) {
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2 text-xs font-semibold text-gray-600 min-w-0">
+          <Music size={14} className="text-[#c8102e] shrink-0" />
+          <span className="truncate">{value.fileName}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex-1 min-w-0">
+            <AudioPlayer src={value.preview} />
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              URL.revokeObjectURL(value.preview);
+              onChange(null);
+            }}
+            aria-label="Musiqini sil"
+            className="w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-[#c8102e] hover:bg-rose-50 cursor-pointer"
+          >
+            <Trash2 size={18} />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => fileRef.current?.click()}
+        className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-rose-200 bg-white px-3 py-3.5 text-sm font-bold text-[#8b1424] hover:bg-rose-50 cursor-pointer"
+      >
+        <Upload size={18} /> Musiqi faylı seç (mp3)
+      </button>
+      <p className="text-[11px] text-gray-400 -mt-1">Səhifə açılanda avtomatik çalınacaq. Maks. 15 MB.</p>
+      <input ref={fileRef} type="file" accept="audio/*" className="hidden" onChange={handleFile} />
+    </>
+  );
 }
 
 export async function uploadAudio(blob: Blob, fileName: string): Promise<string> {
@@ -38,6 +142,7 @@ export function AudioRecorder({
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const recorderRef = useRef<MediaRecorder | null>(null);
+  const elapsedRef = useRef(0);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -55,9 +160,15 @@ export function AudioRecorder({
     []
   );
 
-  const keep = (blob: Blob, fileName: string) => {
+  const keep = async (blob: Blob, fileName: string, recordedSeconds?: number) => {
     if (value) URL.revokeObjectURL(value.preview);
-    onChange({ blob, fileName, preview: URL.createObjectURL(blob) });
+    const measured = await measureAudioDuration(blob);
+    onChange({
+      blob,
+      fileName,
+      preview: URL.createObjectURL(blob),
+      duration: measured ?? (recordedSeconds && recordedSeconds > 0 ? recordedSeconds : null),
+    });
   };
 
   const remove = () => {
@@ -81,18 +192,18 @@ export function AudioRecorder({
         const type = recorder.mimeType || "audio/webm";
         const blob = new Blob(chunksRef.current, { type });
         const ext = type.includes("mp4") ? "m4a" : type.includes("ogg") ? "ogg" : "webm";
-        if (blob.size > 0) keep(blob, `etiraf-ses.${ext}`);
+        if (blob.size > 0) keep(blob, `etiraf-ses.${ext}`, elapsedRef.current);
       };
       recorderRef.current = recorder;
       recorder.start();
       setSeconds(0);
       setRecording(true);
-      let elapsed = 0;
+      elapsedRef.current = 0;
       timerRef.current = setInterval(() => {
-        elapsed += 1;
-        setSeconds(elapsed);
+        elapsedRef.current += 1;
+        setSeconds(elapsedRef.current);
         // Maksimum müddətə çatanda yazı avtomatik dayanır.
-        if (elapsed >= ETIRAF_AUDIO_MAX_SECONDS) stop();
+        if (elapsedRef.current >= ETIRAF_AUDIO_MAX_SECONDS) stop();
       }, 1000);
     } catch {
       showToast("Mikrofona icazə verilmədi.", "error");
@@ -118,8 +229,10 @@ export function AudioRecorder({
 
   if (value) {
     return (
-      <div className="flex items-center gap-3 rounded-2xl border border-rose-100 bg-white px-3 py-2.5">
-        <audio src={value.preview} controls className="h-10 flex-1 min-w-0" />
+      <div className="flex items-center gap-2">
+        <div className="flex-1 min-w-0">
+          <AudioPlayer src={value.preview} knownDuration={value.duration} />
+        </div>
         <button
           type="button"
           onClick={remove}

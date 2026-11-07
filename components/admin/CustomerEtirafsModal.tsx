@@ -93,7 +93,7 @@ export function CustomerEtirafsModal({
                 <div className="flex flex-col min-w-0 flex-1">
                   <span className="font-bold text-sm text-gray-900 truncate">{e.title || `/etiraf/${e.slug}`}</span>
                   <span className="text-[11px] text-gray-400">
-                    {[e.photoCount ? `${e.photoCount} şəkil` : null, e.hasMessage ? "mesaj" : null, e.hasAudio ? "audio" : null]
+                    {[e.photoCount ? `${e.photoCount} şəkil` : null, e.hasMessage ? "mesaj" : null, e.hasAudio ? "audio" : null, e.hasMusic ? "musiqi" : null]
                       .filter(Boolean)
                       .join(" • ")}{" "}
                     · {new Date(e.createdAt).toLocaleDateString("az-AZ", { day: "numeric", month: "short", year: "numeric" })}

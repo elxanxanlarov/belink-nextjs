@@ -58,9 +58,31 @@ export const ETIRAF_PACKAGES: EtirafPackage[] = [
     design: "night",
   },
   {
+    id: "sekil-metn",
+    label: "Şəkil + mətn",
+    price: 10,
+    includes: ["Şəkillər", "Ürək sözləri (mətn)", "QR kodlu hədiyyə kartı"],
+    photos: true,
+    text: true,
+    audio: false,
+    music: false,
+    design: "polaroid",
+  },
+  {
+    id: "sekil-metn-musiqi",
+    label: "Şəkil + mətn + fon musiqisi",
+    price: 12,
+    includes: ["Şəkillər", "Ürək sözləri (mətn)", "Avtomatik açılan fon musiqisi", "QR kodlu hədiyyə kartı"],
+    photos: true,
+    text: true,
+    audio: false,
+    music: true,
+    design: "red",
+  },
+  {
     id: "tam",
     label: "Şəkil + mətn + səs yazısı",
-    price: 10,
+    price: 15,
     includes: ["Şəkillər", "Ürək sözləri (mətn)", "Səs yazısı", "QR kodlu hədiyyə kartı"],
     photos: true,
     text: true,
@@ -72,7 +94,6 @@ export const ETIRAF_PACKAGES: EtirafPackage[] = [
 
 // Əvvəl paylaşılmış nümunə linkləri işləməyə davam etsin deyə saxlanılır (siyahıda göstərilmir).
 const LEGACY_DEMOS: EtirafDemo[] = [
-  { id: "sekil-yazi", label: "Şəkil + Yazı", photos: true, text: true, audio: false, music: false, design: "red" },
   { id: "sekil-ses", label: "Şəkil + Səs", photos: true, text: false, audio: true, music: false, design: "night" },
   { id: "yazi-ses", label: "Yazı + Səs", photos: false, text: true, audio: true, music: false, design: "night" },
   { id: "yazi", label: "Yalnız yazı", photos: false, text: true, audio: false, music: false, design: "polaroid" },

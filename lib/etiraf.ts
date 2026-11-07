@@ -11,6 +11,7 @@ import {
 } from "@/lib/etirafShared";
 
 export * from "@/lib/etirafShared";
+import { ETIRAF_PACKAGES } from "@/lib/etirafDemos";
 
 const BASE62 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 const LOWER_ALNUM = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -40,21 +41,27 @@ export const generateSlug = () => randomString(7, LOWER_ALNUM) + randomString(1,
 export function normalizeInviteOptions(
   body: Record<string, unknown>
 ):
-  | { ok: true; data: EtirafAllowance & { maxPhotos: number; note: string | null } }
+  | {
+      ok: true;
+      data: Required<EtirafAllowance> & { maxPhotos: number; note: string | null; packageId: string | null };
+    }
   | { ok: false; error: string } {
   const allowance = {
     allowPhotos: body.allowPhotos !== false,
     allowText: body.allowText !== false,
     allowAudio: body.allowAudio !== false,
+    allowMusic: body.allowMusic === true,
   };
-  if (!allowance.allowPhotos && !allowance.allowText && !allowance.allowAudio) {
+  if (!allowance.allowPhotos && !allowance.allowText && !allowance.allowAudio && !allowance.allowMusic) {
     return { ok: false, error: "Ən azı bir məzmun növü seçilməlidir." };
   }
   let maxPhotos = Number.isInteger(body.maxPhotos) ? (body.maxPhotos as number) : defaultMaxPhotos(allowance);
   maxPhotos = Math.max(1, Math.min(ETIRAF_PHOTOS_HARD_MAX, maxPhotos));
   if (!allowance.allowPhotos) maxPhotos = 0;
   const note = typeof body.note === "string" ? body.note.trim().slice(0, 120) || null : null;
-  return { ok: true, data: { ...allowance, maxPhotos, note } };
+  const packageId =
+    typeof body.packageId === "string" && ETIRAF_PACKAGES.some((p) => p.id === body.packageId) ? body.packageId : null;
+  return { ok: true, data: { ...allowance, maxPhotos, note, packageId } };
 }
 
 function isCloudinaryUrl(value: unknown): value is string {
@@ -72,6 +79,9 @@ export interface EtirafPayload {
   message: string | null;
   photos: string[];
   audioUrl: string | null;
+  /** Səs yazısının real uzunluğu (saniyə) — brauzerin səhv göstərməməsi üçün cihazda ölçülür */
+  audioDuration: number | null;
+  musicUrl: string | null;
   design: EtirafDesign;
 }
 
@@ -83,18 +93,24 @@ export function validateEtirafPayload(
   const message = typeof body.message === "string" ? body.message.trim() : "";
   const photos: unknown[] = Array.isArray(body.photos) ? body.photos : [];
   const audioUrl = body.audioUrl || null;
+  const musicUrl = body.musicUrl || null;
+  const rawDuration = Number(body.audioDuration);
+  const audioDuration =
+    audioUrl && Number.isFinite(rawDuration) && rawDuration > 0 && rawDuration <= 600 ? Math.round(rawDuration) : null;
   const design = ETIRAF_DESIGN_IDS.includes(body.design as EtirafDesign) ? (body.design as EtirafDesign) : "red";
 
   if (photos.length && !invite.allowPhotos) return { ok: false, error: "Bu link ilə şəkil əlavə etmək olmaz." };
   if (message && !invite.allowText) return { ok: false, error: "Bu link ilə yazı əlavə etmək olmaz." };
   if (audioUrl && !invite.allowAudio) return { ok: false, error: "Bu link ilə səsli mesaj əlavə etmək olmaz." };
+  if (musicUrl && !invite.allowMusic) return { ok: false, error: "Bu link ilə fon musiqisi əlavə etmək olmaz." };
 
   if (photos.length > invite.maxPhotos) return { ok: false, error: `Maksimum ${invite.maxPhotos} şəkil əlavə etmək olar.` };
   if (!photos.every(isCloudinaryUrl)) return { ok: false, error: "Şəkil ünvanları yanlışdır." };
   if (message.length > ETIRAF_MESSAGE_MAX) return { ok: false, error: `Mətn ${ETIRAF_MESSAGE_MAX} simvoldan çox ola bilməz.` };
   if (audioUrl !== null && !isCloudinaryUrl(audioUrl)) return { ok: false, error: "Səs faylının ünvanı yanlışdır." };
+  if (musicUrl !== null && !isCloudinaryUrl(musicUrl)) return { ok: false, error: "Musiqi faylının ünvanı yanlışdır." };
 
-  if (!photos.length && !message && !audioUrl) {
+  if (!photos.length && !message && !audioUrl && !musicUrl) {
     return { ok: false, error: "Etiraf boş ola bilməz — ən azı bir məzmun əlavə edin." };
   }
 
@@ -105,6 +121,8 @@ export function validateEtirafPayload(
       message: message || null,
       photos: photos as string[],
       audioUrl: audioUrl as string | null,
+      audioDuration,
+      musicUrl: musicUrl as string | null,
       design,
     },
   };

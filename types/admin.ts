@@ -48,6 +48,8 @@ export interface EtirafInviteItem {
   allowPhotos: boolean;
   allowText: boolean;
   allowAudio: boolean;
+  allowMusic: boolean;
+  packageId: string | null;
   maxPhotos: number;
   note: string | null;
   usedAt: string | null;
@@ -70,6 +72,7 @@ export interface CustomerEtirafItem {
   photoCount: number;
   hasMessage: boolean;
   hasAudio: boolean;
+  hasMusic: boolean;
   design: string;
   createdAt: string;
 }

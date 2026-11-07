@@ -12,6 +12,7 @@ import {
   ImageIcon,
   Loader2,
   Mic,
+  Music,
   Palette,
   Plus,
   Type,
@@ -29,7 +30,7 @@ import { cldImage } from "@/lib/cloudinaryUrl";
 import { showToast } from "@/lib/swal";
 import { EtirafLogo } from "@/components/etiraf/EtirafLogo";
 import { EtirafView } from "@/components/etiraf/EtirafView";
-import { AudioRecorder, uploadAudio, type LocalAudio } from "@/components/etiraf/AudioRecorder";
+import { AudioRecorder, MusicPicker, uploadAudio, uploadMusic, type LocalAudio } from "@/components/etiraf/AudioRecorder";
 import { EtirafSignOutButton } from "@/components/etiraf/EtirafClientBits";
 
 export interface EtirafWizardInvite {
@@ -37,6 +38,7 @@ export interface EtirafWizardInvite {
   allowPhotos: boolean;
   allowText: boolean;
   allowAudio: boolean;
+  allowMusic: boolean;
   maxPhotos: number;
 }
 
@@ -194,6 +196,7 @@ export function EtirafWizard({
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [message, setMessage] = useState("");
   const [audio, setAudio] = useState<LocalAudio | null>(null);
+  const [music, setMusic] = useState<LocalAudio | null>(null);
   const [design, setDesign] = useState<EtirafDesign>("red");
   const [title, setTitle] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -202,7 +205,7 @@ export function EtirafWizard({
   const fileRef = useRef<HTMLInputElement>(null);
 
   const previewPhotos = photos.map((p) => p.preview);
-  const hasContent = photos.length > 0 || message.trim().length > 0 || Boolean(audio);
+  const hasContent = photos.length > 0 || message.trim().length > 0 || Boolean(audio) || Boolean(music);
 
   const handleFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -230,12 +233,14 @@ export function EtirafWizard({
     });
 
   /** Hələ yüklənməmiş şəkilləri (eyni anda 3) və səsi yükləyir; təkrar cəhddə artıq yüklənənləri ötürür. */
-  const uploadAll = async (): Promise<{ photoUrls: string[]; audioUrl: string | null }> => {
+  const uploadAll = async (): Promise<{ photoUrls: string[]; audioUrl: string | null; musicUrl: string | null }> => {
     const usePhotos = invite.allowPhotos ? photos : [];
     const useAudio = invite.allowAudio ? audio : null;
+    const useMusic = invite.allowMusic ? music : null;
     const pendingPhotos = usePhotos.filter((p) => !p.url);
     const audioPending = useAudio && !useAudio.url ? 1 : 0;
-    const total = pendingPhotos.length + audioPending;
+    const musicPending = useMusic && !useMusic.url ? 1 : 0;
+    const total = pendingPhotos.length + audioPending + musicPending;
     let done = 0;
     setProgress({ done, total, stage: total ? "upload" : "save" });
 
@@ -261,14 +266,22 @@ export function EtirafWizard({
       setProgress({ done, total, stage: "upload" });
     }
 
+    let musicUrl = useMusic?.url ?? null;
+    if (useMusic && !musicUrl) {
+      musicUrl = await uploadMusic(useMusic.blob, useMusic.fileName);
+      setMusic({ ...useMusic, url: musicUrl });
+      done += 1;
+      setProgress({ done, total, stage: "upload" });
+    }
+
     setProgress({ done, total, stage: "save" });
-    return { photoUrls: usePhotos.map((p) => urls.get(p.id) as string), audioUrl };
+    return { photoUrls: usePhotos.map((p) => urls.get(p.id) as string), audioUrl, musicUrl };
   };
 
   const submit = async () => {
     setSubmitting(true);
     try {
-      const { photoUrls, audioUrl } = await uploadAll();
+      const { photoUrls, audioUrl, musicUrl } = await uploadAll();
       const res = await fetch("/api/etiraf", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -278,6 +291,8 @@ export function EtirafWizard({
           message: invite.allowText ? message.trim() : "",
           photos: photoUrls,
           audioUrl,
+          audioDuration: audioUrl ? audio?.duration ?? null : null,
+          musicUrl,
           design,
         }),
       });
@@ -299,6 +314,8 @@ export function EtirafWizard({
     message: message.trim() || null,
     photos: previewPhotos,
     audioUrl: audio?.preview ?? null,
+    audioDuration: audio?.duration ?? null,
+    musicUrl: music?.preview ?? null,
     design,
   };
 
@@ -388,6 +405,12 @@ export function EtirafWizard({
             {invite.allowAudio && (
               <Section icon={<Mic size={18} />} title="Səsli mesaj" hint="istəyə bağlı, maks. 60 san">
                 <AudioRecorder value={audio} onChange={setAudio} />
+              </Section>
+            )}
+
+            {invite.allowMusic && (
+              <Section icon={<Music size={18} />} title="Fon musiqisi" hint="avtomatik çalınır">
+                <MusicPicker value={music} onChange={setMusic} />
               </Section>
             )}
 
@@ -499,6 +522,7 @@ export function EtirafWizard({
                     photos.length ? `${photos.length} şəkil` : null,
                     message.trim() ? "1 mesaj" : null,
                     audio ? "1 audio" : null,
+                    music ? "musiqi" : null,
                   ]
                     .filter(Boolean)
                     .join(" • ")}

@@ -35,6 +35,7 @@ export default async function EtirafCreatePage({ params }: PageProps) {
           allowPhotos: true,
           allowText: true,
           allowAudio: true,
+          allowMusic: true,
           maxPhotos: true,
           usedAt: true,
           usedById: true,
@@ -106,6 +107,7 @@ export default async function EtirafCreatePage({ params }: PageProps) {
             {invite.allowPhotos && <li>📷 Şəkillər əlavə et</li>}
             {invite.allowText && <li>✍️ Ürək sözlərini yaz</li>}
             {invite.allowAudio && <li>🎙️ Səsli mesaj göndər</li>}
+            {invite.allowMusic && <li>🎵 Fon musiqisi əlavə et</li>}
           </ul>
         </div>
         <EtirafSignInButton callbackUrl={`/etiraf/yarat/${invite.token}`} />
@@ -121,6 +123,7 @@ export default async function EtirafCreatePage({ params }: PageProps) {
         allowPhotos: invite.allowPhotos,
         allowText: invite.allowText,
         allowAudio: invite.allowAudio,
+        allowMusic: invite.allowMusic,
         maxPhotos: invite.maxPhotos,
       }}
       customer={{ name: session.user?.name ?? null, email: session.user?.email ?? null }}

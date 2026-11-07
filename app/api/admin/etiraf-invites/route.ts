@@ -39,6 +39,8 @@ export async function GET(req: NextRequest) {
         allowPhotos: i.allowPhotos,
         allowText: i.allowText,
         allowAudio: i.allowAudio,
+        allowMusic: i.allowMusic,
+        packageId: i.packageId,
         maxPhotos: i.maxPhotos,
         note: i.note,
         usedAt: i.usedAt?.toISOString() ?? null,

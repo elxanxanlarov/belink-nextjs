@@ -15,6 +15,8 @@ export interface EtirafViewData {
   message: string | null;
   photos: string[];
   audioUrl: string | null;
+  /** Səs yazısının real uzunluğu (saniyə) */
+  audioDuration?: number | null;
   /** Arxa fon musiqisi — "Sürprizi aç"-dan sonra avtomatik başlayır */
   musicUrl?: string | null;
   design: EtirafDesign | string;
@@ -125,11 +127,21 @@ function formatTime(sec: number) {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-function AudioPlayer({ src, theme }: { src: string; theme: Theme }) {
+export function AudioPlayer({
+  src,
+  theme = THEMES.polaroid,
+  knownDuration,
+}: {
+  src: string;
+  theme?: Theme;
+  /** Cihazda ölçülmüş real uzunluq — Chrome-un yazdığı səslərdə brauzer uzunluğu səhv göstərir */
+  knownDuration?: number | null;
+}) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
   const [time, setTime] = useState(0);
-  const [duration, setDuration] = useState(0);
+  const [mediaDuration, setDuration] = useState(0);
+  const duration = knownDuration && knownDuration > 0 ? knownDuration : Number.isFinite(mediaDuration) ? mediaDuration : 0;
 
   const toggle = () => {
     const audio = audioRef.current;
@@ -154,7 +166,7 @@ function AudioPlayer({ src, theme }: { src: string; theme: Theme }) {
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         onEnded={() => setPlaying(false)}
-        onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
+        onTimeUpdate={(e) => setTime(duration ? Math.min(e.currentTarget.currentTime, duration) : e.currentTarget.currentTime)}
         onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
         onDurationChange={(e) => setDuration(e.currentTarget.duration)}
       />
@@ -487,7 +499,7 @@ export function EtirafView({
 
         {data.audioUrl && (
           <div className="w-full">
-            <AudioPlayer src={playableAudioUrl(data.audioUrl)} theme={theme} />
+            <AudioPlayer src={playableAudioUrl(data.audioUrl)} theme={theme} knownDuration={data.audioDuration} />
           </div>
         )}
 

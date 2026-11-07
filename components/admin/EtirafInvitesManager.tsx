@@ -12,6 +12,7 @@ import {
   Link2,
   Loader2,
   Mic,
+  Music,
   Pencil,
   Plus,
   Sparkles,
@@ -21,7 +22,7 @@ import {
 } from "lucide-react";
 import { EtirafInviteItem } from "@/types";
 import { ETIRAF_PHOTOS_HARD_MAX, defaultMaxPhotos } from "@/lib/etirafShared";
-import { etirafSamplesUrl } from "@/lib/etirafDemos";
+import { ETIRAF_PACKAGES, etirafSamplesUrl } from "@/lib/etirafDemos";
 import { cldImage } from "@/lib/cloudinaryUrl";
 import { showToast } from "@/lib/swal";
 import { Table, ColumnDefinition } from "@/components/ui/Table";
@@ -44,12 +45,40 @@ interface InviteOptions {
   allowPhotos: boolean;
   allowText: boolean;
   allowAudio: boolean;
+  allowMusic: boolean;
+  /** Seçilmiş paket (null — fərdi seçim) */
+  packageId: string | null;
   /** null — seçimə görə avtomatik (15 / 10) */
   maxPhotos: number | null;
   note: string;
 }
 
-const DEFAULT_OPTIONS: InviteOptions = { allowPhotos: true, allowText: true, allowAudio: true, maxPhotos: null, note: "" };
+const packageOptions = (id: string): Partial<InviteOptions> => {
+  const pkg = ETIRAF_PACKAGES.find((p) => p.id === id)!;
+  return {
+    packageId: pkg.id,
+    allowPhotos: pkg.photos,
+    allowText: pkg.text,
+    allowAudio: pkg.audio,
+    allowMusic: pkg.music,
+    maxPhotos: null,
+  };
+};
+
+const DEFAULT_OPTIONS: InviteOptions = {
+  allowPhotos: true,
+  allowText: true,
+  allowAudio: true,
+  allowMusic: false,
+  packageId: "tam",
+  maxPhotos: null,
+  note: "",
+};
+
+const packageLabel = (id: string | null) => {
+  const pkg = ETIRAF_PACKAGES.find((p) => p.id === id);
+  return pkg ? `${pkg.label} · ${pkg.price} AZN` : null;
+};
 
 const effectiveMax = (o: InviteOptions) => o.maxPhotos ?? defaultMaxPhotos(o);
 
@@ -57,6 +86,8 @@ const toPayload = (o: InviteOptions) => ({
   allowPhotos: o.allowPhotos,
   allowText: o.allowText,
   allowAudio: o.allowAudio,
+  allowMusic: o.allowMusic,
+  packageId: o.packageId,
   maxPhotos: effectiveMax(o),
   note: o.note,
 });
@@ -97,14 +128,47 @@ function TypeToggle({
 /** Link seçimləri — həm yeni link, həm də düzəltmə üçün. */
 function InviteOptionsFields({ value, onChange }: { value: InviteOptions; onChange: (v: InviteOptions) => void }) {
   const set = (patch: Partial<InviteOptions>) => onChange({ ...value, ...patch });
+  // Məzmun növünü əllə dəyişmək paketi "fərdi" edir.
+  const toggle = (patch: Partial<InviteOptions>) => set({ ...patch, packageId: null });
   return (
     <>
       <div className="flex flex-col gap-2">
+        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Paket</span>
+        <div className="flex flex-wrap gap-2">
+          {ETIRAF_PACKAGES.map((pkg) => {
+            const active = value.packageId === pkg.id;
+            return (
+              <button
+                key={pkg.id}
+                type="button"
+                onClick={() => set(packageOptions(pkg.id))}
+                aria-pressed={active}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-2xl border text-xs font-bold transition-colors cursor-pointer ${
+                  active ? "bg-[#8b1424] border-[#8b1424] text-white" : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                {pkg.label}
+                <span className={`rounded-full px-2 py-0.5 ${active ? "bg-white/20" : "bg-gray-100"}`}>{pkg.price} AZN</span>
+              </button>
+            );
+          })}
+          <span
+            className={`flex items-center px-3.5 py-2 rounded-2xl border text-xs font-bold ${
+              value.packageId ? "border-dashed border-gray-200 text-gray-400" : "border-[#8b1424] text-[#8b1424] bg-rose-50"
+            }`}
+          >
+            Fərdi
+          </span>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2">
         <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Məzmun növləri</span>
         <div className="flex flex-wrap gap-2">
-          <TypeToggle active={value.allowPhotos} onClick={() => set({ allowPhotos: !value.allowPhotos })} icon={<ImageIcon size={16} />} label="Şəkil" />
-          <TypeToggle active={value.allowText} onClick={() => set({ allowText: !value.allowText })} icon={<Type size={16} />} label="Yazı" />
-          <TypeToggle active={value.allowAudio} onClick={() => set({ allowAudio: !value.allowAudio })} icon={<Mic size={16} />} label="Səs" />
+          <TypeToggle active={value.allowPhotos} onClick={() => toggle({ allowPhotos: !value.allowPhotos })} icon={<ImageIcon size={16} />} label="Şəkil" />
+          <TypeToggle active={value.allowText} onClick={() => toggle({ allowText: !value.allowText })} icon={<Type size={16} />} label="Yazı" />
+          <TypeToggle active={value.allowAudio} onClick={() => toggle({ allowAudio: !value.allowAudio })} icon={<Mic size={16} />} label="Səs yazısı" />
+          <TypeToggle active={value.allowMusic} onClick={() => toggle({ allowMusic: !value.allowMusic })} icon={<Music size={16} />} label="Fon musiqisi" />
         </div>
       </div>
 
@@ -150,6 +214,8 @@ function EditInviteModal({
     allowPhotos: invite.allowPhotos,
     allowText: invite.allowText,
     allowAudio: invite.allowAudio,
+    allowMusic: invite.allowMusic,
+    packageId: invite.packageId,
     maxPhotos: invite.allowPhotos ? invite.maxPhotos : null,
     note: invite.note || "",
   });
@@ -217,7 +283,7 @@ function DemoLinksCard() {
         <div className="min-w-0">
           <h3 className="font-extrabold text-gray-900 text-base">Nümunələr səhifəsi</h3>
           <p className="text-xs text-gray-400 mt-0.5">
-            Bütün paketlər (5 / 7 / 10 AZN), dizaynlar və WhatsApp sifariş düyməsi bir səhifədə.
+            Bütün paketlər (5 / 7 / 10 / 12 / 15 AZN), dizaynlar və WhatsApp sifariş düyməsi bir səhifədə.
           </p>
           <p className="text-xs font-semibold text-[#8b1424] mt-1 truncate">{url}</p>
         </div>
@@ -280,7 +346,7 @@ export function EtirafInvitesManager() {
   }, []);
 
   const create = async () => {
-    if (!options.allowPhotos && !options.allowText && !options.allowAudio) {
+    if (!options.allowPhotos && !options.allowText && !options.allowAudio && !options.allowMusic) {
       showToast("Ən azı bir məzmun növü seçin.", "error");
       return;
     }
@@ -407,6 +473,11 @@ export function EtirafInvitesManager() {
                   )}
                 </td>
                 <td className="px-6 py-4">
+                  {packageLabel(invite.packageId) && (
+                    <span className="block mb-1.5 text-[11px] font-bold text-[#8b1424] whitespace-nowrap">
+                      {packageLabel(invite.packageId)}
+                    </span>
+                  )}
                   <div className="flex items-center gap-1.5 text-gray-500">
                     {invite.allowPhotos && (
                       <span title="Şəkil" className="inline-flex items-center gap-1 text-[11px] font-bold bg-gray-100 px-2 py-1 rounded-full">
@@ -419,8 +490,13 @@ export function EtirafInvitesManager() {
                       </span>
                     )}
                     {invite.allowAudio && (
-                      <span title="Səs" className="inline-flex bg-gray-100 p-1.5 rounded-full">
+                      <span title="Səs yazısı" className="inline-flex bg-gray-100 p-1.5 rounded-full">
                         <Mic size={12} />
+                      </span>
+                    )}
+                    {invite.allowMusic && (
+                      <span title="Fon musiqisi" className="inline-flex bg-gray-100 p-1.5 rounded-full">
+                        <Music size={12} />
                       </span>
                     )}
                   </div>
