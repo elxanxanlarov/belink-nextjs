@@ -664,6 +664,15 @@ export function EtirafView({
     playMusic();
   };
 
+  // Giriş ekranı olmayanda (məs. yaradarkən "Baxış") fon musiqisi dərhal başlayır, çıxanda dayanır.
+  // "Baxışa keç" toxunuşu istifadəçi hərəkəti sayıldığı üçün brauzer avtomatik oxutmağa icazə verir.
+  useEffect(() => {
+    if (withIntro || !data.musicUrl) return;
+    const m = musicRef.current;
+    m?.play().catch(() => {});
+    return () => m?.pause();
+  }, [withIntro, data.musicUrl]);
+
   // Səs yazısı oxunanda fon musiqisi dayanır, səs bitəndə/dayananda yenidən davam edir.
   const resumeMusicRef = useRef(false);
   const onVoicePlaying = (playing: boolean) => {

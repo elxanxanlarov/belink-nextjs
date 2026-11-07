@@ -19,6 +19,9 @@ import {
   X,
   GripVertical,
   Star,
+  Crop,
+  RotateCcw,
+  Trash2,
 } from "lucide-react";
 import {
   ETIRAF_DESIGNS,
@@ -32,6 +35,7 @@ import { cldImage } from "@/lib/cloudinaryUrl";
 import { showToast } from "@/lib/swal";
 import { EtirafLogo } from "@/components/etiraf/EtirafLogo";
 import { EtirafView } from "@/components/etiraf/EtirafView";
+import ImageCropModal from "@/components/modals/ImageCropModal";
 import { AudioRecorder, MusicPicker, uploadAudio, uploadMusic, type LocalAudio } from "@/components/etiraf/AudioRecorder";
 import { EtirafSignOutButton } from "@/components/etiraf/EtirafClientBits";
 
@@ -46,9 +50,14 @@ export interface EtirafWizardInvite {
 
 interface PhotoItem {
   id: string;
-  /** Cihazdakı şəklin obyekt URL-i (önizləmə üçün) */
+  /** Hazırkı (kəsilmiş və ya orijinal) şəklin obyekt URL-i */
   preview: string;
-  file: File;
+  /** Hazırkı fayl — kəsilibsə kəsilmiş versiya */
+  file: Blob;
+  /** Orijinal fayl — kəsmə həmişə bundan başlayır, ona görə kəsilən hissələr itmir */
+  original: Blob;
+  originalPreview: string;
+  cropped: boolean;
   /** Cloudinary ünvanı — yalnız "Təsdiqlə"-dən sonra yüklənir */
   url: string | null;
 }
@@ -62,7 +71,7 @@ interface UploadProgress {
 const STEPS = ["Məzmun", "Baxış", "Hazır"];
 
 /** Şəkli yükləmədən əvvəl kiçildir (ən uzun tərəf 1600px) — sürətli yüklənmə və 4.5 MB limitinə uyğunluq üçün. */
-async function compressImage(file: File): Promise<Blob> {
+async function compressImage(file: Blob): Promise<Blob> {
   const bitmap = await createImageBitmap(file).catch(() => null);
   if (!bitmap) return file;
   const max = 1600;
@@ -75,7 +84,7 @@ async function compressImage(file: File): Promise<Blob> {
   return new Promise((resolve) => canvas.toBlob((b) => resolve(b || file), "image/jpeg", 0.86));
 }
 
-async function uploadPhoto(file: File): Promise<string> {
+async function uploadPhoto(file: Blob): Promise<string> {
   const blob = await compressImage(file);
   const formData = new FormData();
   formData.append("file", blob, "etiraf.jpg");
@@ -223,16 +232,47 @@ export function EtirafWizard({
     const items: PhotoItem[] = files
       .filter((file) => file.type.startsWith("image/") || file.type === "")
       .slice(0, room)
-      .map((file) => ({ id: crypto.randomUUID(), preview: URL.createObjectURL(file), file, url: null }));
+      .map((file) => {
+        const preview = URL.createObjectURL(file);
+        return { id: crypto.randomUUID(), preview, file, original: file, originalPreview: preview, cropped: false, url: null };
+      });
     setPhotos((prev) => [...prev, ...items]);
   };
 
   const removePhoto = (id: string) =>
     setPhotos((prev) => {
       const removed = prev.find((p) => p.id === id);
-      if (removed) URL.revokeObjectURL(removed.preview);
+      if (removed) {
+        if (removed.cropped) URL.revokeObjectURL(removed.preview);
+        URL.revokeObjectURL(removed.originalPreview);
+      }
       return prev.filter((p) => p.id !== id);
     });
+
+  // Böyüdülmüş baxış və kəsmə (crop)
+  const [viewId, setViewId] = useState<string | null>(null);
+  const [cropId, setCropId] = useState<string | null>(null);
+  const viewing = photos.find((p) => p.id === viewId) ?? null;
+  const cropping = photos.find((p) => p.id === cropId) ?? null;
+
+  const applyCrop = (id: string, blob: Blob) =>
+    setPhotos((prev) =>
+      prev.map((p) => {
+        if (p.id !== id) return p;
+        if (p.cropped) URL.revokeObjectURL(p.preview);
+        // Yeni fayl — yenidən yüklənməlidir
+        return { ...p, file: blob, preview: URL.createObjectURL(blob), cropped: true, url: null };
+      })
+    );
+
+  const revertCrop = (id: string) =>
+    setPhotos((prev) =>
+      prev.map((p) => {
+        if (p.id !== id || !p.cropped) return p;
+        URL.revokeObjectURL(p.preview);
+        return { ...p, file: p.original, preview: p.originalPreview, cropped: false, url: null };
+      })
+    );
 
   // Sıralama: ilk şəkil cover-dir (birinci göstərilir və kiçik şəkil kimi istifadə olunur).
   const [dragId, setDragId] = useState<string | null>(null);
@@ -404,7 +444,19 @@ export function EtirafWizard({
                         dragId === p.id ? "scale-105 ring-2 ring-[#c8102e] shadow-xl z-10 opacity-90" : ""
                       } ${i === 0 ? "ring-2 ring-amber-400" : ""}`}
                     >
-                      <Image src={p.preview} alt="" fill unoptimized className="object-cover pointer-events-none select-none" draggable={false} />
+                      <button
+                        type="button"
+                        onClick={() => setViewId(p.id)}
+                        aria-label="Şəklə bax və düzəlt"
+                        className="absolute inset-0 cursor-zoom-in"
+                      >
+                        <Image src={p.preview} alt="" fill unoptimized className="object-cover pointer-events-none select-none" draggable={false} />
+                      </button>
+                      {p.cropped && (
+                        <span className="absolute top-1 left-1 inline-flex items-center rounded-full bg-black/60 text-white p-1" title="Kəsilib">
+                          <Crop size={10} />
+                        </span>
+                      )}
                       {i === 0 ? (
                         <span className="absolute bottom-1 left-1 inline-flex items-center gap-0.5 rounded-full bg-amber-400 text-[#2a1416] text-[9px] font-extrabold px-1.5 py-0.5">
                           <Star size={9} fill="currentColor" /> Cover
@@ -644,6 +696,94 @@ export function EtirafWizard({
           </div>
         )}
       </main>
+
+      {viewing && (
+        <div className="fixed inset-0 z-[140] bg-black/95 flex flex-col" role="dialog" aria-modal="true" aria-label="Şəkil">
+          <div className="flex items-center justify-between px-4 pt-[max(1rem,env(safe-area-inset-top))] text-white">
+            <span className="text-sm font-semibold">
+              Şəkil {photos.findIndex((p) => p.id === viewing.id) + 1} / {photos.length}
+              {viewing.cropped && <span className="ml-2 text-xs text-white/60">(kəsilib)</span>}
+            </span>
+            <button
+              type="button"
+              onClick={() => setViewId(null)}
+              aria-label="Bağla"
+              className="w-11 h-11 rounded-full bg-white/15 flex items-center justify-center cursor-pointer"
+            >
+              <X size={22} />
+            </button>
+          </div>
+          <div className="relative flex-1 min-h-0 m-4" onClick={() => setViewId(null)}>
+            <Image src={viewing.preview} alt="" fill unoptimized className="object-contain" />
+          </div>
+          <div className="grid grid-cols-2 gap-2 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+            <button
+              type="button"
+              onClick={() => setCropId(viewing.id)}
+              className="flex items-center justify-center gap-2 rounded-full bg-white text-[#8b1424] py-3 text-sm font-bold cursor-pointer"
+            >
+              <Crop size={16} /> Kəs
+            </button>
+            {viewing.cropped ? (
+              <button
+                type="button"
+                onClick={() => revertCrop(viewing.id)}
+                className="flex items-center justify-center gap-2 rounded-full bg-white/15 border border-white/30 text-white py-3 text-sm font-bold cursor-pointer"
+              >
+                <RotateCcw size={16} /> Orijinala qaytar
+              </button>
+            ) : photos[0]?.id !== viewing.id ? (
+              <button
+                type="button"
+                onClick={() => makeCover(viewing.id)}
+                className="flex items-center justify-center gap-2 rounded-full bg-white/15 border border-white/30 text-white py-3 text-sm font-bold cursor-pointer"
+              >
+                <Star size={16} /> Cover et
+              </button>
+            ) : (
+              <span className="flex items-center justify-center gap-2 rounded-full bg-amber-400 text-[#2a1416] py-3 text-sm font-bold">
+                <Star size={16} fill="currentColor" /> Cover
+              </span>
+            )}
+            {viewing.cropped && photos[0]?.id !== viewing.id && (
+              <button
+                type="button"
+                onClick={() => makeCover(viewing.id)}
+                className="flex items-center justify-center gap-2 rounded-full bg-white/15 border border-white/30 text-white py-3 text-sm font-bold cursor-pointer"
+              >
+                <Star size={16} /> Cover et
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                removePhoto(viewing.id);
+                setViewId(null);
+              }}
+              className={`flex items-center justify-center gap-2 rounded-full bg-red-500/20 border border-red-400/40 text-red-200 py-3 text-sm font-bold cursor-pointer ${
+                viewing.cropped && photos[0]?.id !== viewing.id ? "" : "col-span-2"
+              }`}
+            >
+              <Trash2 size={16} /> Sil
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Kəsmə həmişə orijinal şəkildən başlayır — əvvəl kəsilən hissələr itmir */}
+      <ImageCropModal
+        isOpen={Boolean(cropping)}
+        imageSrc={cropping?.originalPreview ?? ""}
+        onClose={() => setCropId(null)}
+        onCropComplete={(blob) => {
+          if (cropping) applyCrop(cropping.id, blob);
+          setCropId(null);
+        }}
+        onImageProcessingError={() => {
+          showToast("Şəkli kəsmək mümkün olmadı.", "error");
+          setCropId(null);
+        }}
+      />
 
       {progress && <UploadOverlay progress={progress} />}
     </div>
