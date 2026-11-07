@@ -19,7 +19,8 @@ interface PageProps {
 export default async function EtirafDemoPage({ params, searchParams }: PageProps) {
   const { demo } = await params;
   const { dizayn } = await searchParams;
-  const data = getEtirafDemo(demo, Array.isArray(dizayn) ? dizayn[0] : dizayn);
+  const chosen = Array.isArray(dizayn) ? dizayn[0] : dizayn;
+  const data = getEtirafDemo(demo, chosen);
   if (!data) notFound();
   const pkg = getEtirafPackage(demo);
 
@@ -31,7 +32,7 @@ export default async function EtirafDemoPage({ params, searchParams }: PageProps
       <div className="fixed inset-x-0 bottom-0 z-20 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="mx-auto max-w-md flex items-center gap-2 rounded-full bg-black/65 backdrop-blur p-1.5 pl-2 text-white shadow-2xl">
           <Link
-            href={ETIRAF_SAMPLES_PATH}
+            href={chosen ? `${ETIRAF_SAMPLES_PATH}?dizayn=${data.design}` : ETIRAF_SAMPLES_PATH}
             aria-label="Bütün nümunələr"
             className="w-9 h-9 shrink-0 rounded-full bg-white/15 flex items-center justify-center"
           >
@@ -45,7 +46,7 @@ export default async function EtirafDemoPage({ params, searchParams }: PageProps
           </div>
           {pkg && (
             <a
-              href={etirafOrderWhatsappUrl(pkg, data.design)}
+              href={etirafOrderWhatsappUrl(pkg, chosen ? data.design : null)}
               target="_blank"
               rel="noopener noreferrer"
               className="shrink-0 rounded-full bg-[#25d366] px-4 py-2.5 text-xs font-bold text-white"

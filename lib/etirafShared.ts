@@ -36,7 +36,7 @@ export const etirafInviteUrl = (token: string) => `${ETIRAF_BASE_URL}/etiraf/yar
 export function etirafWhatsappUrl(slug: string, customer?: { name?: string | null; email?: string | null }) {
   const phone = (process.env.NEXT_PUBLIC_ETIRAF_WHATSAPP || "").replace(/\D/g, "");
   const lines = [
-    "Salam! Etirafım hazırdır ❤️",
+    "Salam! Etiraf hədiyyəm hazırdır 🎁",
     etirafPublicUrl(slug),
     customer?.name ? `Ad: ${customer.name}` : "",
     customer?.email ? `Email: ${customer.email}` : "",

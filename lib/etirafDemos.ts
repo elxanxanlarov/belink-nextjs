@@ -107,10 +107,10 @@ export function etirafDemoPath(id: string, design?: EtirafDesign | null) {
 /** Paketi WhatsApp-da sifariş etmək üçün link. */
 export function etirafOrderWhatsappUrl(pkg: EtirafPackage, design?: EtirafDesign | null) {
   const phone = (process.env.NEXT_PUBLIC_ETIRAF_WHATSAPP || "").replace(/\D/g, "");
-  const designName = ETIRAF_DESIGNS.find((d) => d.id === (design || pkg.design))?.name;
+  const designName = design ? ETIRAF_DESIGNS.find((d) => d.id === design)?.name : null;
   const text = encodeURIComponent(
     [
-      "Salam! Etiraf sifariş etmək istəyirəm ❤️",
+      "Salam! Etiraf hədiyyəsi sifariş etmək istəyirəm 🎁",
       `Paket: ${pkg.label} — ${pkg.price} AZN`,
       designName ? `Dizayn: ${designName}` : "",
     ]

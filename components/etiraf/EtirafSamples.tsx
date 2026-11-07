@@ -2,9 +2,8 @@
 
 import React, { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Swal from "sweetalert2";
 import Image from "next/image";
-import { Check, Eye, ImageIcon, Mic, Music, Type } from "lucide-react";
+import { AlertCircle, Check, Eye, ImageIcon, Mic, Music, Type } from "lucide-react";
 import { ETIRAF_DESIGNS, type EtirafDesign } from "@/lib/etirafShared";
 import { ETIRAF_PACKAGES, etirafDemoPath, etirafOrderWhatsappUrl, type EtirafPackage } from "@/lib/etirafDemos";
 import { EtirafLogo } from "@/components/etiraf/EtirafLogo";
@@ -42,39 +41,41 @@ const includeIcon = (item: string) =>
     <Check size={14} />
   );
 
-export function EtirafSamples() {
-  const [design, setDesign] = useState<EtirafDesign | null>(null);
+export function EtirafSamples({ initialDesign }: { initialDesign: EtirafDesign | null }) {
+  // Seçilmiş dizayn URL-də (?dizayn=) saxlanılır — nümunədən geri qayıdanda və yeniləyəndə itmir.
+  const [design, setDesign] = useState<EtirafDesign | null>(initialDesign);
   const [highlight, setHighlight] = useState(false);
+  const [toast, setToast] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router = useRouter();
 
-  /** Dizayn seçilməyibsə xəbərdarlıq göstərir və seçim bölməsini işıqlandırır. */
-  const requireDesign = (): boolean => {
-    if (design) return true;
-    Swal.fire({
-      icon: "warning",
-      title: "Əvvəlcə dizayn seçin",
-      text: "Nümunəyə baxmaq və sifariş vermək üçün yuxarıdan bir dizayn seçin.",
-      confirmButtonText: "Dizayn seç",
-      buttonsStyling: false,
-      customClass: {
-        popup: "rounded-3xl shadow-2xl font-sans",
-        confirmButton: "px-6 py-2.5 rounded-full font-bold text-sm bg-[#8b1424] text-white cursor-pointer",
-      },
-    }).then(() => {
-      pickerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      setHighlight(true);
-      setTimeout(() => setHighlight(false), 1800);
-    });
-    return false;
+  const chooseDesign = (id: EtirafDesign) => {
+    setDesign(id);
+    setToast(false);
+    window.history.replaceState(null, "", `?dizayn=${id}`);
+  };
+
+  /** Dizayn seçilməyibsə aşağıdan xəbərdarlıq çıxarır və seçim bölməsini işıqlandırır. */
+  const warnDesign = () => {
+    pickerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlight(true);
+    setToast(true);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => {
+      setHighlight(false);
+      setToast(false);
+    }, 2600);
   };
 
   const view = (pkg: EtirafPackage) => {
-    if (requireDesign()) router.push(etirafDemoPath(pkg.id, design));
+    if (!design) return warnDesign();
+    router.push(etirafDemoPath(pkg.id, design));
   };
 
+  // Sifariş dizaynsız da verilə bilər — dizayn seçilibsə mesaja əlavə olunur.
   const order = (pkg: EtirafPackage) => {
-    if (requireDesign()) window.open(etirafOrderWhatsappUrl(pkg, design), "_blank", "noopener,noreferrer");
+    window.open(etirafOrderWhatsappUrl(pkg, design), "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -89,10 +90,20 @@ export function EtirafSamples() {
         {/* Dizayn seçimi */}
         <div
           ref={pickerRef}
-          className={`flex flex-col gap-2 rounded-3xl p-2 -m-2 transition-shadow ${highlight ? "ring-4 ring-rose-300 animate-pulse" : ""}`}
+          className={`flex flex-col gap-2 rounded-3xl p-2 -m-2 transition-shadow ${highlight ? "ring-4 ring-rose-300" : ""}`}
         >
-          <span className="text-xs font-bold text-gray-500 uppercase tracking-wider text-center">
-            Dizayn seç {!design && <span className="text-[#c8102e]">*</span>}
+          <span className="flex items-center justify-center gap-1.5 text-xs font-bold text-gray-500 uppercase tracking-wider">
+            Dizayn seç
+            {!design && (
+              <span
+                className={`w-5 h-5 rounded-full bg-[#c8102e] text-white flex items-center justify-center text-[12px] font-black ${
+                  highlight ? "animate-bounce" : ""
+                }`}
+                aria-label="Dizayn seçilməyib"
+              >
+                !
+              </span>
+            )}
           </span>
           <div className="grid grid-cols-3 gap-2.5">
             {ETIRAF_DESIGNS.map((d) => {
@@ -101,7 +112,7 @@ export function EtirafSamples() {
                 <button
                   key={d.id}
                   type="button"
-                  onClick={() => setDesign(active ? null : d.id)}
+                  onClick={() => chooseDesign(d.id)}
                   aria-pressed={active}
                   className={`relative h-20 rounded-2xl flex items-end justify-center p-2 border-2 cursor-pointer transition-all ${
                     DESIGN_SWATCH[d.id]
@@ -179,6 +190,19 @@ export function EtirafSamples() {
           Sifarişdən sonra sizə xüsusi link göndərilir — şəkillərinizi özünüz əlavə edirsiniz,
           biz isə QR kodlu hədiyyə kartını hazırlayırıq.
         </p>
+      </div>
+
+      <div
+        role="status"
+        aria-live="polite"
+        className={`fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pointer-events-none transition-all duration-300 ${
+          toast ? "translate-y-0 opacity-100" : "translate-y-full opacity-0"
+        }`}
+      >
+        <div className="flex items-center gap-2.5 rounded-2xl bg-[#2a1416] text-white px-4 py-3 shadow-2xl max-w-sm w-full">
+          <AlertCircle size={20} className="text-[#ff6b81] shrink-0" />
+          <span className="text-sm font-semibold">Nümunəyə baxmaq üçün əvvəlcə dizayn seçin</span>
+        </div>
       </div>
     </main>
   );

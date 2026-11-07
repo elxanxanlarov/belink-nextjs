@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Pause, Play, Gift, Music, VolumeX } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play, Gift, Music, VolumeX, X } from "lucide-react";
 import { cldImage } from "@/lib/cloudinaryUrl";
 import type { EtirafDesign } from "@/lib/etirafShared";
 import { EtirafLogo } from "@/components/etiraf/EtirafLogo";
@@ -178,6 +179,107 @@ function AudioPlayer({ src, theme }: { src: string; theme: Theme }) {
   );
 }
 
+/** Şəklə toxunanda tam ekran böyüdülmüş görünüş. */
+function PhotoLightbox({
+  photos,
+  index,
+  onIndex,
+  onClose,
+}: {
+  photos: string[];
+  index: number;
+  onIndex: (i: number) => void;
+  onClose: () => void;
+}) {
+  const count = photos.length;
+  const touchX = useRef<number | null>(null);
+  const go = (delta: number) => onIndex((index + delta + count) % count);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowRight") onIndex((index + 1) % count);
+      if (e.key === "ArrowLeft") onIndex((index - 1 + count) % count);
+    };
+    window.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [index, count, onClose, onIndex]);
+
+  // body-yə portal — səhifədəki digər qatların (alt panel, musiqi düyməsi) üstündə görünsün
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] bg-black flex items-center justify-center"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Şəkil"
+      onClick={onClose}
+      onTouchStart={(e) => (touchX.current = e.touches[0].clientX)}
+      onTouchEnd={(e) => {
+        if (touchX.current === null) return;
+        const dx = e.changedTouches[0].clientX - touchX.current;
+        touchX.current = null;
+        if (Math.abs(dx) > 40 && count > 1) go(dx < 0 ? 1 : -1);
+      }}
+    >
+      <div className="relative w-full h-full max-w-3xl" onClick={(e) => e.stopPropagation()}>
+        <Image
+          key={photos[index]}
+          src={cldImage(photos[index], 1600)}
+          alt={`Xatirə ${index + 1}`}
+          fill
+          unoptimized
+          className="object-contain select-none"
+        />
+      </div>
+
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Bağla"
+        className="absolute top-4 right-4 w-11 h-11 rounded-full bg-black/55 border border-white/25 text-white flex items-center justify-center cursor-pointer"
+      >
+        <X size={22} />
+      </button>
+
+      {count > 1 && (
+        <>
+          <span className="absolute top-6 left-1/2 -translate-x-1/2 text-white/80 text-sm font-semibold tabular-nums">
+            {index + 1} / {count}
+          </span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              go(-1);
+            }}
+            aria-label="Əvvəlki şəkil"
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/55 border border-white/25 text-white flex items-center justify-center cursor-pointer"
+          >
+            <ChevronLeft size={24} />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              go(1);
+            }}
+            aria-label="Növbəti şəkil"
+            className="absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/55 border border-white/25 text-white flex items-center justify-center cursor-pointer"
+          >
+            <ChevronRight size={24} />
+          </button>
+        </>
+      )}
+    </div>,
+    document.body
+  );
+}
+
 function PhotoCarousel({ photos, theme, design }: { photos: string[]; theme: Theme; design: string }) {
   const [rawIndex, setIndex] = useState(0);
   const touchX = useRef<number | null>(null);
@@ -185,11 +287,15 @@ function PhotoCarousel({ photos, theme, design }: { photos: string[]; theme: The
   // Şəkil silinəndə indeks sərhəddən çıxmasın.
   const index = count ? rawIndex % count : 0;
   const go = (delta: number) => setIndex((i) => (((i % count) + delta + count) % count));
+  const [zoomed, setZoomed] = useState(false);
 
   if (!count) return null;
 
   return (
     <div className="w-full flex flex-col items-center gap-4">
+      {zoomed && (
+        <PhotoLightbox photos={photos} index={index} onIndex={setIndex} onClose={() => setZoomed(false)} />
+      )}
       <div
         className="relative w-full max-w-[320px] aspect-[4/5]"
         onTouchStart={(e) => (touchX.current = e.touches[0].clientX)}
@@ -208,7 +314,12 @@ function PhotoCarousel({ photos, theme, design }: { photos: string[]; theme: The
           </>
         )}
         <div className={`absolute inset-0 rotate-[-1.5deg] ${theme.frame}`}>
-          <div className="relative w-full h-full overflow-hidden bg-gray-100">
+          <button
+            type="button"
+            onClick={() => setZoomed(true)}
+            aria-label="Şəkli böyüt"
+            className="relative block w-full h-full overflow-hidden bg-gray-100 cursor-zoom-in"
+          >
             {photos.map((src, i) => (
               <Image
                 key={src + i}
@@ -220,7 +331,7 @@ function PhotoCarousel({ photos, theme, design }: { photos: string[]; theme: The
                 className={`object-cover transition-opacity duration-500 ${i === index ? "opacity-100" : "opacity-0"}`}
               />
             ))}
-          </div>
+          </button>
           {design !== "night" && (
             <svg className="absolute -bottom-4 -right-4 w-14 h-14 drop-shadow-lg" viewBox="0 0 24 24" aria-hidden="true">
               <path

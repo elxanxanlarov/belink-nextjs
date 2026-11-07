@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 
-// Etiraf səhifələrinin brauzer tab ikonu — 🎁
+// Etiraf səhifələrinin brauzer tab ikonu — Etiraf hədiyyə qutusu loqosu
 export const metadata: Metadata = {
   icons: {
-    icon: "/etiraf/icon.svg",
-    shortcut: "/etiraf/icon.svg",
-    apple: "/etiraf/icon.svg",
+    icon: "/etiraf/icon.png",
+    shortcut: "/etiraf/icon.png",
+    apple: "/etiraf/apple-icon.png",
   },
 };
 
