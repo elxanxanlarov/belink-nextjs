@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getEtirafDemo } from "@/lib/etirafDemos";
+import { ChevronLeft } from "lucide-react";
+import { ETIRAF_SAMPLES_PATH, etirafOrderWhatsappUrl, getEtirafDemo, getEtirafPackage } from "@/lib/etirafDemos";
 import { EtirafView } from "@/components/etiraf/EtirafView";
 
 export const metadata: Metadata = {
@@ -19,13 +21,40 @@ export default async function EtirafDemoPage({ params, searchParams }: PageProps
   const { dizayn } = await searchParams;
   const data = getEtirafDemo(demo, Array.isArray(dizayn) ? dizayn[0] : dizayn);
   if (!data) notFound();
+  const pkg = getEtirafPackage(demo);
 
   return (
     <main className="flex-1 relative">
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 rounded-full bg-black/55 backdrop-blur px-3 py-1 text-[11px] font-bold text-white tracking-wide">
-        NÜMUNƏ
-      </div>
       <EtirafView data={data} withIntro />
+
+      {/* Giriş ekranı (z-30) açılandan sonra görünür */}
+      <div className="fixed inset-x-0 bottom-0 z-20 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="mx-auto max-w-md flex items-center gap-2 rounded-full bg-black/65 backdrop-blur p-1.5 pl-2 text-white shadow-2xl">
+          <Link
+            href={ETIRAF_SAMPLES_PATH}
+            aria-label="Bütün nümunələr"
+            className="w-9 h-9 shrink-0 rounded-full bg-white/15 flex items-center justify-center"
+          >
+            <ChevronLeft size={18} />
+          </Link>
+          <div className="flex flex-col min-w-0 flex-1 leading-tight">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-white/60">Nümunə</span>
+            <span className="text-xs font-bold truncate">
+              {pkg ? `${pkg.label} · ${pkg.price} AZN` : "Etiraf nümunəsi"}
+            </span>
+          </div>
+          {pkg && (
+            <a
+              href={etirafOrderWhatsappUrl(pkg, data.design)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 rounded-full bg-[#25d366] px-4 py-2.5 text-xs font-bold text-white"
+            >
+              Sifariş ver
+            </a>
+          )}
+        </div>
+      </div>
     </main>
   );
 }

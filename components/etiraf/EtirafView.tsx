@@ -3,7 +3,7 @@
 import React, { useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Pause, Play, Gift } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play, Gift, Music, VolumeX } from "lucide-react";
 import { cldImage } from "@/lib/cloudinaryUrl";
 import type { EtirafDesign } from "@/lib/etirafShared";
 import { EtirafLogo } from "@/components/etiraf/EtirafLogo";
@@ -14,8 +14,38 @@ export interface EtirafViewData {
   message: string | null;
   photos: string[];
   audioUrl: string | null;
+  /** Arxa fon musiqisi — "Sürprizi aç"-dan sonra avtomatik başlayır */
+  musicUrl?: string | null;
   design: EtirafDesign | string;
 }
+
+/** Giriş ("Sürprizi aç") ekranı — hər dizayna uyğun. */
+const INTRO_THEMES = {
+  red: {
+    bg: "bg-[radial-gradient(ellipse_at_center,#a3162b_0%,#4a0711_100%)]",
+    text: "text-white",
+    logo: "light" as const,
+    box: "bg-white/15 border border-white/30 text-white",
+    button: "bg-white text-[#8b1424]",
+    petal: "#ff6b81",
+  },
+  polaroid: {
+    bg: "bg-[radial-gradient(ellipse_at_center,#fffaf5_0%,#f3dfd2_100%)]",
+    text: "text-[#8b1424]",
+    logo: "dark" as const,
+    box: "bg-white border border-rose-200 text-[#c8102e] shadow-[0_18px_40px_rgba(122,15,30,0.18)] rotate-[-3deg]",
+    button: "bg-[#8b1424] text-white",
+    petal: "#e2556b",
+  },
+  night: {
+    bg: "etiraf-stars",
+    text: "text-white",
+    logo: "light" as const,
+    box: "bg-white/10 border border-[#ffd98a]/60 text-[#ffd98a] shadow-[0_0_50px_rgba(255,217,138,0.25)]",
+    button: "bg-[#ffd98a] text-[#0e1736]",
+    petal: "#ffd98a",
+  },
+};
 
 /** Cloudinary səsini mp3 kimi verir ki, iPhone-da da oxunsun (Chrome webm yazır). */
 export function playableAudioUrl(url: string): string {
@@ -276,6 +306,26 @@ export function EtirafView({
   const theme = THEMES[design];
   const [opened, setOpened] = useState(!withIntro);
   const audioOnly = Boolean(data.audioUrl) && data.photos.length === 0 && !data.message;
+  const intro = INTRO_THEMES[design];
+  const musicRef = useRef<HTMLAudioElement>(null);
+  const [musicOn, setMusicOn] = useState(false);
+
+  const playMusic = () => {
+    musicRef.current?.play().catch(() => setMusicOn(false));
+  };
+
+  // "Sürprizi aç" toxunuşu istifadəçi hərəkəti sayılır — musiqi brauzerdə avtomatik başlaya bilir.
+  const openSurprise = () => {
+    setOpened(true);
+    playMusic();
+  };
+
+  const toggleMusic = () => {
+    const m = musicRef.current;
+    if (!m) return;
+    if (m.paused) playMusic();
+    else m.pause();
+  };
 
   return (
     <div
@@ -340,20 +390,47 @@ export function EtirafView({
         )}
       </div>
 
+      {data.musicUrl && (
+        <>
+          <audio
+            ref={musicRef}
+            src={playableAudioUrl(data.musicUrl)}
+            loop
+            preload="auto"
+            onPlay={() => setMusicOn(true)}
+            onPause={() => setMusicOn(false)}
+          />
+          {opened && (
+            <button
+              type="button"
+              onClick={toggleMusic}
+              aria-label={musicOn ? "Musiqini söndür" : "Musiqini aç"}
+              className={`${preview ? "absolute" : "fixed"} top-4 right-4 z-20 w-11 h-11 rounded-full flex items-center justify-center backdrop-blur cursor-pointer ${theme.nav}`}
+            >
+              {musicOn ? <Music size={18} className="animate-pulse" /> : <VolumeX size={18} />}
+            </button>
+          )}
+        </>
+      )}
+
       {!opened && (
         <button
           type="button"
-          onClick={() => setOpened(true)}
-          className="fixed inset-0 z-30 flex flex-col items-center justify-center gap-6 bg-[radial-gradient(ellipse_at_center,#a3162b_0%,#4a0711_100%)] text-white cursor-pointer"
+          onClick={openSurprise}
+          className={`fixed inset-0 z-30 overflow-hidden flex flex-col items-center justify-center gap-6 px-6 text-center cursor-pointer ${intro.bg} ${intro.text}`}
         >
-          <EtirafLogo tone="light" size={72} />
-          <div className="etiraf-gift-bounce w-28 h-28 rounded-[2rem] bg-white/15 border border-white/30 flex items-center justify-center">
+          <Petals color={intro.petal} />
+          {design === "night" && (
+            <svg className="absolute top-12 right-10 w-16 h-16" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" fill="#ffd98a" />
+            </svg>
+          )}
+          <EtirafLogo tone={intro.logo} size={72} />
+          <div className={`etiraf-gift-bounce w-28 h-28 rounded-[2rem] flex items-center justify-center ${intro.box}`}>
             <Gift size={56} />
           </div>
           <span className={`${etirafScript.className} text-4xl`}>Sənin üçün bir sürpriz var...</span>
-          <span className="px-6 py-3 rounded-full bg-white text-[#8b1424] font-bold text-sm shadow-xl">
-            Sürprizi aç ♡
-          </span>
+          <span className={`px-6 py-3 rounded-full font-bold text-sm shadow-xl ${intro.button}`}>Sürprizi aç ♡</span>
         </button>
       )}
     </div>
