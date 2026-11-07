@@ -29,7 +29,7 @@ import { cldImage } from "@/lib/cloudinaryUrl";
 import { showToast } from "@/lib/swal";
 import { EtirafLogo } from "@/components/etiraf/EtirafLogo";
 import { EtirafView } from "@/components/etiraf/EtirafView";
-import { AudioRecorder } from "@/components/etiraf/AudioRecorder";
+import { AudioRecorder, uploadAudio, type LocalAudio } from "@/components/etiraf/AudioRecorder";
 import { EtirafSignOutButton } from "@/components/etiraf/EtirafClientBits";
 
 export interface EtirafWizardInvite {
@@ -42,8 +42,17 @@ export interface EtirafWizardInvite {
 
 interface PhotoItem {
   id: string;
+  /** Cihazdakı şəklin obyekt URL-i (önizləmə üçün) */
   preview: string;
+  file: File;
+  /** Cloudinary ünvanı — yalnız "Təsdiqlə"-dən sonra yüklənir */
   url: string | null;
+}
+
+interface UploadProgress {
+  done: number;
+  total: number;
+  stage: "upload" | "save";
 }
 
 const STEPS = ["Məzmun", "Baxış", "Hazır"];
@@ -135,6 +144,45 @@ const DESIGN_SWATCH: Record<EtirafDesign, string> = {
   night: "bg-[radial-gradient(ellipse_at_top,#1d2d5c,#060a1c)]",
 };
 
+function UploadOverlay({ progress }: { progress: UploadProgress }) {
+  const percent = progress.total ? Math.round((progress.done / progress.total) * 100) : 100;
+  return (
+    <div
+      className="fixed inset-0 z-[300] flex flex-col items-center justify-center gap-6 px-8 text-center text-white bg-[radial-gradient(ellipse_at_center,#a3162b_0%,#4a0711_100%)]"
+      role="status"
+      aria-live="polite"
+    >
+      <EtirafLogo tone="light" size={64} />
+      <div className="relative w-24 h-24">
+        <span className="absolute inset-0 rounded-full border-4 border-white/20" />
+        <span className="absolute inset-0 rounded-full border-4 border-transparent border-t-white animate-spin" />
+        <svg className="absolute inset-0 m-auto w-10 h-10 animate-pulse" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.7 4.5c2.1 0 3.6 1.2 4.3 2.6.7-1.4 2.2-2.6 4.3-2.6 3.7 0 5.8 3.9 4.3 7.3C19.5 16.4 12 21 12 21z"
+            fill="#fff"
+          />
+        </svg>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <p className="text-lg font-extrabold">
+          {progress.stage === "save" ? "Etirafın hazırlanır..." : "Fayllar yüklənir..."}
+        </p>
+        {progress.total > 0 && (
+          <p className="text-sm text-white/80 tabular-nums">
+            {progress.done} / {progress.total}
+          </p>
+        )}
+      </div>
+      {progress.total > 0 && (
+        <div className="w-full max-w-xs h-2 rounded-full bg-white/20 overflow-hidden">
+          <div className="h-full rounded-full bg-white transition-all duration-300" style={{ width: `${percent}%` }} />
+        </div>
+      )}
+      <p className="text-xs text-white/60 max-w-xs">Zəhmət olmasa səhifəni bağlamayın.</p>
+    </div>
+  );
+}
+
 export function EtirafWizard({
   invite,
   customer,
@@ -145,16 +193,16 @@ export function EtirafWizard({
   const [step, setStep] = useState(0);
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [message, setMessage] = useState("");
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [audio, setAudio] = useState<LocalAudio | null>(null);
   const [design, setDesign] = useState<EtirafDesign>("red");
   const [title, setTitle] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [progress, setProgress] = useState<UploadProgress | null>(null);
   const [slug, setSlug] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const uploading = photos.some((p) => !p.url);
-  const readyPhotos = photos.filter((p) => p.url).map((p) => p.url!) as string[];
-  const hasContent = readyPhotos.length > 0 || message.trim().length > 0 || Boolean(audioUrl);
+  const previewPhotos = photos.map((p) => p.preview);
+  const hasContent = photos.length > 0 || message.trim().length > 0 || Boolean(audio);
 
   const handleFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -166,36 +214,61 @@ export function EtirafWizard({
     }
     if (files.length > room) showToast(`Yalnız ${room} şəkil əlavə olundu (maks. ${invite.maxPhotos}).`, "info");
 
-    const items = files.slice(0, room).map((file) => ({
-      id: crypto.randomUUID(),
-      preview: URL.createObjectURL(file),
-      url: null,
-      file,
-    }));
-    setPhotos((prev) => [...prev, ...items.map(({ id, preview, url }) => ({ id, preview, url }))]);
+    // Şəkillər hələlik yalnız cihazda saxlanılır — Cloudinary-yə "Təsdiqlə"-dən sonra yüklənir.
+    const items: PhotoItem[] = files
+      .filter((file) => file.type.startsWith("image/") || file.type === "")
+      .slice(0, room)
+      .map((file) => ({ id: crypto.randomUUID(), preview: URL.createObjectURL(file), file, url: null }));
+    setPhotos((prev) => [...prev, ...items]);
+  };
 
-    // Paralel, amma eyni anda ən çox 3 yükləmə.
-    const queue = [...items];
+  const removePhoto = (id: string) =>
+    setPhotos((prev) => {
+      const removed = prev.find((p) => p.id === id);
+      if (removed) URL.revokeObjectURL(removed.preview);
+      return prev.filter((p) => p.id !== id);
+    });
+
+  /** Hələ yüklənməmiş şəkilləri (eyni anda 3) və səsi yükləyir; təkrar cəhddə artıq yüklənənləri ötürür. */
+  const uploadAll = async (): Promise<{ photoUrls: string[]; audioUrl: string | null }> => {
+    const usePhotos = invite.allowPhotos ? photos : [];
+    const useAudio = invite.allowAudio ? audio : null;
+    const pendingPhotos = usePhotos.filter((p) => !p.url);
+    const audioPending = useAudio && !useAudio.url ? 1 : 0;
+    const total = pendingPhotos.length + audioPending;
+    let done = 0;
+    setProgress({ done, total, stage: total ? "upload" : "save" });
+
+    const urls = new Map(usePhotos.filter((p) => p.url).map((p) => [p.id, p.url as string]));
+    const queue = [...pendingPhotos];
     const worker = async () => {
       while (queue.length) {
         const item = queue.shift()!;
-        try {
-          const url = await uploadPhoto(item.file);
-          setPhotos((prev) => prev.map((p) => (p.id === item.id ? { ...p, url } : p)));
-        } catch (error) {
-          setPhotos((prev) => prev.filter((p) => p.id !== item.id));
-          showToast(error instanceof Error ? error.message : "Şəkil yüklənmədi.", "error");
-        }
+        const url = await uploadPhoto(item.file);
+        urls.set(item.id, url);
+        setPhotos((prev) => prev.map((p) => (p.id === item.id ? { ...p, url } : p)));
+        done += 1;
+        setProgress({ done, total, stage: "upload" });
       }
     };
     await Promise.all([worker(), worker(), worker()]);
-  };
 
-  const removePhoto = (id: string) => setPhotos((prev) => prev.filter((p) => p.id !== id));
+    let audioUrl = useAudio?.url ?? null;
+    if (useAudio && !audioUrl) {
+      audioUrl = await uploadAudio(useAudio.blob, useAudio.fileName);
+      setAudio({ ...useAudio, url: audioUrl });
+      done += 1;
+      setProgress({ done, total, stage: "upload" });
+    }
+
+    setProgress({ done, total, stage: "save" });
+    return { photoUrls: usePhotos.map((p) => urls.get(p.id) as string), audioUrl };
+  };
 
   const submit = async () => {
     setSubmitting(true);
     try {
+      const { photoUrls, audioUrl } = await uploadAll();
       const res = await fetch("/api/etiraf", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -203,8 +276,8 @@ export function EtirafWizard({
           token: invite.token,
           title: title.trim(),
           message: invite.allowText ? message.trim() : "",
-          photos: invite.allowPhotos ? readyPhotos : [],
-          audioUrl: invite.allowAudio ? audioUrl : null,
+          photos: photoUrls,
+          audioUrl,
           design,
         }),
       });
@@ -217,14 +290,15 @@ export function EtirafWizard({
       showToast(error instanceof Error ? error.message : "Etiraf yaradıla bilmədi.", "error");
     } finally {
       setSubmitting(false);
+      setProgress(null);
     }
   };
 
   const viewData = {
     title: title.trim() || null,
     message: message.trim() || null,
-    photos: readyPhotos,
-    audioUrl,
+    photos: previewPhotos,
+    audioUrl: audio?.preview ?? null,
     design,
   };
 
@@ -269,11 +343,6 @@ export function EtirafWizard({
                   {photos.map((p) => (
                     <div key={p.id} className="relative aspect-square rounded-xl overflow-hidden bg-gray-100">
                       <Image src={p.preview} alt="" fill unoptimized className="object-cover" />
-                      {!p.url && (
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                          <Loader2 size={18} className="animate-spin text-white" />
-                        </div>
-                      )}
                       <button
                         type="button"
                         onClick={() => removePhoto(p.id)}
@@ -318,7 +387,7 @@ export function EtirafWizard({
 
             {invite.allowAudio && (
               <Section icon={<Mic size={18} />} title="Səsli mesaj" hint="istəyə bağlı, maks. 60 san">
-                <AudioRecorder value={audioUrl} onChange={setAudioUrl} />
+                <AudioRecorder value={audio} onChange={setAudio} />
               </Section>
             )}
 
@@ -358,22 +427,14 @@ export function EtirafWizard({
 
             <button
               type="button"
-              disabled={!hasContent || uploading}
+              disabled={!hasContent}
               onClick={() => {
                 setStep(1);
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }}
               className="h-14 rounded-full bg-[linear-gradient(180deg,#a3162b,#7a0f1e)] text-white font-bold flex items-center justify-center gap-2 shadow-lg shadow-rose-200 disabled:opacity-50 cursor-pointer"
             >
-              {uploading ? (
-                <>
-                  <Loader2 size={18} className="animate-spin" /> Şəkillər yüklənir...
-                </>
-              ) : (
-                <>
-                  Baxışa keç <ArrowRight size={18} />
-                </>
-              )}
+              Baxışa keç <ArrowRight size={18} />
             </button>
             {!hasContent && (
               <p className="text-center text-xs text-gray-400 -mt-2">Davam etmək üçün ən azı bir məzmun əlavə edin.</p>
@@ -425,8 +486,8 @@ export function EtirafWizard({
 
             <div className="w-full rounded-3xl bg-white border border-rose-100 p-3 flex items-center gap-3 text-left shadow-sm">
               <div className="relative w-20 h-20 shrink-0 rounded-2xl overflow-hidden bg-rose-50 flex items-center justify-center">
-                {readyPhotos[0] ? (
-                  <Image src={cldImage(readyPhotos[0], 240)} alt="" fill unoptimized className="object-cover" />
+                {previewPhotos[0] ? (
+                  <Image src={cldImage(previewPhotos[0], 240)} alt="" fill unoptimized className="object-cover" />
                 ) : (
                   <EtirafLogo tone="dark" size={36} />
                 )}
@@ -435,9 +496,9 @@ export function EtirafWizard({
                 <span className="font-bold text-gray-900">Sənin etirafın</span>
                 <span className="text-xs text-gray-500">
                   {[
-                    readyPhotos.length ? `${readyPhotos.length} şəkil` : null,
+                    photos.length ? `${photos.length} şəkil` : null,
                     message.trim() ? "1 mesaj" : null,
-                    audioUrl ? "1 audio" : null,
+                    audio ? "1 audio" : null,
                   ]
                     .filter(Boolean)
                     .join(" • ")}
@@ -485,6 +546,8 @@ export function EtirafWizard({
           </div>
         )}
       </main>
+
+      {progress && <UploadOverlay progress={progress} />}
     </div>
   );
 }

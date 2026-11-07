@@ -1,14 +1,23 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Loader2, Mic, Square, Trash2, Upload } from "lucide-react";
+import { Mic, Square, Trash2, Upload } from "lucide-react";
 import { ETIRAF_AUDIO_MAX_SECONDS } from "@/lib/etirafShared";
 import { showToast } from "@/lib/swal";
-import { playableAudioUrl } from "@/components/etiraf/EtirafView";
 
 const MIME_CANDIDATES = ["audio/webm;codecs=opus", "audio/mp4", "audio/webm", "audio/ogg;codecs=opus"];
 
-async function uploadAudio(blob: Blob, fileName: string): Promise<string> {
+/** Cihazda saxlanılan səs — Cloudinary-yə yalnız "Təsdiqlə"-dən sonra yüklənir. */
+export interface LocalAudio {
+  blob: Blob;
+  fileName: string;
+  /** Dinləmək üçün obyekt URL-i */
+  preview: string;
+  /** Yükləndikdən sonra Cloudinary ünvanı */
+  url?: string;
+}
+
+export async function uploadAudio(blob: Blob, fileName: string): Promise<string> {
   const formData = new FormData();
   formData.append("file", blob, fileName);
   formData.append("folder", "etiraf");
@@ -23,12 +32,11 @@ export function AudioRecorder({
   value,
   onChange,
 }: {
-  value: string | null;
-  onChange: (url: string | null) => void;
+  value: LocalAudio | null;
+  onChange: (audio: LocalAudio | null) => void;
 }) {
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
-  const [uploading, setUploading] = useState(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -47,15 +55,14 @@ export function AudioRecorder({
     []
   );
 
-  const handleUpload = async (blob: Blob, fileName: string) => {
-    setUploading(true);
-    try {
-      onChange(await uploadAudio(blob, fileName));
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : "Səs faylı yüklənmədi.", "error");
-    } finally {
-      setUploading(false);
-    }
+  const keep = (blob: Blob, fileName: string) => {
+    if (value) URL.revokeObjectURL(value.preview);
+    onChange({ blob, fileName, preview: URL.createObjectURL(blob) });
+  };
+
+  const remove = () => {
+    if (value) URL.revokeObjectURL(value.preview);
+    onChange(null);
   };
 
   const start = async () => {
@@ -74,7 +81,7 @@ export function AudioRecorder({
         const type = recorder.mimeType || "audio/webm";
         const blob = new Blob(chunksRef.current, { type });
         const ext = type.includes("mp4") ? "m4a" : type.includes("ogg") ? "ogg" : "webm";
-        if (blob.size > 0) handleUpload(blob, `etiraf-ses.${ext}`);
+        if (blob.size > 0) keep(blob, `etiraf-ses.${ext}`);
       };
       recorderRef.current = recorder;
       recorder.start();
@@ -106,24 +113,16 @@ export function AudioRecorder({
       showToast("Səs faylı 4 MB-dan böyük olmamalıdır.", "error");
       return;
     }
-    handleUpload(file, file.name);
+    keep(file, file.name);
   };
-
-  if (uploading) {
-    return (
-      <div className="flex items-center gap-3 rounded-2xl border border-rose-100 bg-rose-50/60 px-4 py-4 text-sm font-semibold text-[#8b1424]">
-        <Loader2 size={18} className="animate-spin" /> Səs yüklənir...
-      </div>
-    );
-  }
 
   if (value) {
     return (
       <div className="flex items-center gap-3 rounded-2xl border border-rose-100 bg-white px-3 py-2.5">
-        <audio src={playableAudioUrl(value)} controls className="h-10 flex-1 min-w-0" />
+        <audio src={value.preview} controls className="h-10 flex-1 min-w-0" />
         <button
           type="button"
-          onClick={() => onChange(null)}
+          onClick={remove}
           aria-label="Səsi sil"
           className="w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-[#c8102e] hover:bg-rose-50 cursor-pointer"
         >
