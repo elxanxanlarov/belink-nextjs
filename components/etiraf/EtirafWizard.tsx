@@ -17,6 +17,8 @@ import {
   Plus,
   Type,
   X,
+  GripVertical,
+  Star,
 } from "lucide-react";
 import {
   ETIRAF_DESIGNS,
@@ -232,6 +234,32 @@ export function EtirafWizard({
       return prev.filter((p) => p.id !== id);
     });
 
+  // Sıralama: ilk şəkil cover-dir (birinci göstərilir və kiçik şəkil kimi istifadə olunur).
+  const [dragId, setDragId] = useState<string | null>(null);
+
+  const movePhoto = (id: string, toIndex: number) =>
+    setPhotos((prev) => {
+      const from = prev.findIndex((p) => p.id === id);
+      if (from < 0 || from === toIndex) return prev;
+      const next = [...prev];
+      const [item] = next.splice(from, 1);
+      next.splice(toIndex, 0, item);
+      return next;
+    });
+
+  const makeCover = (id: string) => movePhoto(id, 0);
+
+  /** Barmaq/siçan ilə sürüşdürəndə altdakı şəklin yerinə keçir. */
+  const onDragMove = (e: React.PointerEvent) => {
+    if (!dragId) return;
+    const target = document
+      .elementFromPoint(e.clientX, e.clientY)
+      ?.closest<HTMLElement>("[data-photo-id]")?.dataset.photoId;
+    if (!target || target === dragId) return;
+    const toIndex = photos.findIndex((p) => p.id === target);
+    if (toIndex >= 0) movePhoto(dragId, toIndex);
+  };
+
   /** Hələ yüklənməmiş şəkilləri (eyni anda 3) və səsi yükləyir; təkrar cəhddə artıq yüklənənləri ötürür. */
   const uploadAll = async (): Promise<{ photoUrls: string[]; audioUrl: string | null; musicUrl: string | null }> => {
     const usePhotos = invite.allowPhotos ? photos : [];
@@ -356,10 +384,56 @@ export function EtirafWizard({
                   </span>
                 }
               >
-                <div className="grid grid-cols-4 gap-2">
-                  {photos.map((p) => (
-                    <div key={p.id} className="relative aspect-square rounded-xl overflow-hidden bg-gray-100">
-                      <Image src={p.preview} alt="" fill unoptimized className="object-cover" />
+                {photos.length > 1 && (
+                  <p className="text-[11px] text-gray-400 -mt-1">
+                    <GripVertical size={11} className="inline -mt-0.5" /> ilə sürüşdürüb sıranı dəyiş ·{" "}
+                    <Star size={11} className="inline -mt-0.5" /> ilə cover seç
+                  </p>
+                )}
+                <div
+                  className="grid grid-cols-4 gap-2"
+                  onPointerMove={onDragMove}
+                  onPointerUp={() => setDragId(null)}
+                  onPointerCancel={() => setDragId(null)}
+                >
+                  {photos.map((p, i) => (
+                    <div
+                      key={p.id}
+                      data-photo-id={p.id}
+                      className={`relative aspect-square rounded-xl overflow-hidden bg-gray-100 transition-transform duration-150 ${
+                        dragId === p.id ? "scale-105 ring-2 ring-[#c8102e] shadow-xl z-10 opacity-90" : ""
+                      } ${i === 0 ? "ring-2 ring-amber-400" : ""}`}
+                    >
+                      <Image src={p.preview} alt="" fill unoptimized className="object-cover pointer-events-none select-none" draggable={false} />
+                      {i === 0 ? (
+                        <span className="absolute bottom-1 left-1 inline-flex items-center gap-0.5 rounded-full bg-amber-400 text-[#2a1416] text-[9px] font-extrabold px-1.5 py-0.5">
+                          <Star size={9} fill="currentColor" /> Cover
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => makeCover(p.id)}
+                          aria-label="Cover et"
+                          title="Cover et"
+                          className="absolute bottom-1 left-1 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center cursor-pointer"
+                        >
+                          <Star size={12} />
+                        </button>
+                      )}
+                      {photos.length > 1 && (
+                        <button
+                          type="button"
+                          aria-label="Sürüşdürüb yerini dəyiş"
+                          title="Sürüşdür"
+                          onPointerDown={(e) => {
+                            e.preventDefault();
+                            setDragId(p.id);
+                          }}
+                          className="absolute bottom-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center cursor-grab active:cursor-grabbing touch-none"
+                        >
+                          <GripVertical size={12} />
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => removePhoto(p.id)}

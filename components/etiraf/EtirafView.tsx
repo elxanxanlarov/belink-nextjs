@@ -3,7 +3,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
-import Link from "next/link";
 import { ChevronLeft, ChevronRight, Pause, Play, Gift, Music, VolumeX, X } from "lucide-react";
 import { cldImage } from "@/lib/cloudinaryUrl";
 import type { EtirafDesign } from "@/lib/etirafShared";
@@ -131,11 +130,14 @@ export function AudioPlayer({
   src,
   theme = THEMES.polaroid,
   knownDuration,
+  onPlayingChange,
 }: {
   src: string;
   theme?: Theme;
   /** Cihazda ölçülmüş real uzunluq — Chrome-un yazdığı səslərdə brauzer uzunluğu səhv göstərir */
   knownDuration?: number | null;
+  /** Oxunma başlayanda/dayananda xəbər verir (məs. fon musiqisini dayandırmaq üçün) */
+  onPlayingChange?: (playing: boolean) => void;
 }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
@@ -163,8 +165,14 @@ export function AudioPlayer({
         ref={audioRef}
         src={src}
         preload="metadata"
-        onPlay={() => setPlaying(true)}
-        onPause={() => setPlaying(false)}
+        onPlay={() => {
+          setPlaying(true);
+          onPlayingChange?.(true);
+        }}
+        onPause={() => {
+          setPlaying(false);
+          onPlayingChange?.(false);
+        }}
         onEnded={() => setPlaying(false)}
         onTimeUpdate={(e) => setTime(duration ? Math.min(e.currentTarget.currentTime, duration) : e.currentTarget.currentTime)}
         onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
@@ -241,7 +249,37 @@ function PhotoLightbox({
   const touchX = useRef<number | null>(null);
   const [drag, setDrag] = useState(0);
   const [closing, setClosing] = useState(false);
-  const go = (delta: number) => onIndex((index + delta + count) % count);
+
+  // Sonsuz dövr: lentin əvvəlinə son şəklin, sonuna isə ilk şəklin surəti qoyulur.
+  // Sondan irəli gedəndə surətə sürüşür, keçid bitəndə animasiyasız əsl şəklə keçir — geri qaçmır.
+  const loop = count > 1;
+  const [pos, setPos] = useState(loop ? index + 1 : 0);
+  const [animate, setAnimate] = useState(true);
+  const slides = loop ? [count - 1, ...photos.map((_, i) => i), 0] : photos.map((_, i) => i);
+
+  const go = (delta: number) => {
+    if (!loop || pos <= 0 || pos >= count + 1) return; // əvvəlki keçid bitənə qədər gözlə
+    setAnimate(true);
+    setPos(pos + delta);
+    onIndex((index + delta + count) % count);
+  };
+
+  const jump = (i: number) => {
+    setAnimate(true);
+    setPos(loop ? i + 1 : 0);
+    onIndex(i);
+  };
+
+  const onTrackEnd = (e: React.TransitionEvent<HTMLDivElement>) => {
+    if (e.target !== e.currentTarget) return; // içəridəki çərçivələrin animasiyaları nəzərə alınmır
+    if (pos === count + 1) {
+      setAnimate(false);
+      setPos(1);
+    } else if (pos === 0) {
+      setAnimate(false);
+      setPos(count);
+    }
+  };
 
   const close = () => {
     setClosing(true);
@@ -251,17 +289,20 @@ function PhotoLightbox({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
-      if (e.key === "ArrowRight") onIndex((index + 1) % count);
-      if (e.key === "ArrowLeft") onIndex((index - 1 + count) % count);
+      if (e.key === "ArrowRight") go(1);
+      if (e.key === "ArrowLeft") go(-1);
     };
     window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
+  useEffect(() => {
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
-      window.removeEventListener("keydown", onKey);
       document.body.style.overflow = prevOverflow;
     };
-  }, [index, count, onClose, onIndex]);
+  }, []);
 
   // body-yə portal — səhifədəki digər qatların (alt panel, musiqi düyməsi) üstündə görünsün
   return createPortal(
@@ -310,14 +351,18 @@ function PhotoLightbox({
         }}
       >
         <div
-          className={`flex h-full ${drag ? "" : "transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"}`}
-          style={{ transform: `translateX(calc(${-index * 100}% + ${drag}px))` }}
+          className={`flex h-full ${
+            drag || !animate ? "" : "transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
+          }`}
+          style={{ transform: `translateX(calc(${-pos * 100}% + ${drag}px))` }}
+          onTransitionEnd={onTrackEnd}
         >
-          {photos.map((src, i) => {
+          {slides.map((i, k) => {
+            const src = photos[i];
             const active = i === index;
             return (
               <div
-                key={src + i}
+                key={k}
                 className="w-full h-full shrink-0 flex items-center justify-center px-6 py-4"
                 onClick={(e) => e.target === e.currentTarget && close()}
               >
@@ -386,7 +431,7 @@ function PhotoLightbox({
             <button
               key={src + i}
               type="button"
-              onClick={() => onIndex(i)}
+              onClick={() => jump(i)}
               aria-label={`Şəkil ${i + 1}`}
               className={`relative w-12 h-12 shrink-0 rounded-xl overflow-hidden transition-all cursor-pointer ${
                 i === index ? `ring-2 ${t.thumbRing} scale-105` : "opacity-60"
@@ -532,6 +577,65 @@ function Petals({ color }: { color: string }) {
   );
 }
 
+/**
+ * "belink.az/etiraf ilə hazırlanıb" linkinə toxunanda birbaşa çıxmır —
+ * dizayna uyğun xüsusi pəncərə soruşur, nümunələr yeni tabda açılır ki, sürpriz səhifəsi itməsin.
+ */
+function LeaveConfirm({ design, onClose }: { design: keyof typeof INTRO_THEMES; onClose: () => void }) {
+  const intro = INTRO_THEMES[design];
+  const dark = design !== "polaroid";
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return createPortal(
+    <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-4" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-black/55 backdrop-blur-sm etiraf-lightbox-in" onClick={onClose} />
+      <div
+        className={`relative w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl etiraf-lightbox-in ${intro.bg} ${intro.text}`}
+      >
+        <Petals color={intro.petal} />
+        <div className="relative z-10 flex flex-col items-center text-center gap-4 px-6 pt-8 pb-6">
+          <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${intro.box}`}>
+            <Gift size={32} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <h2 className="text-lg font-extrabold">Bu səhifədən çıxmaq istəyirsən?</h2>
+            <p className={`text-sm leading-relaxed ${dark ? "text-white/80" : "text-[#8b1424]/80"}`}>
+              Sən də sevdiyinə belə bir sürpriz hazırlaya bilərsən. Nümunələr yeni səhifədə açılacaq —
+              bu etiraf da açıq qalacaq ♡
+            </p>
+          </div>
+          <div className="w-full flex flex-col gap-2 pt-1">
+            <a
+              href="/etiraf/numuneler"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={onClose}
+              className={`w-full rounded-full py-3 text-sm font-bold shadow-lg ${intro.button}`}
+            >
+              Etiraf nümunələrinə bax 🎁
+            </a>
+            <button
+              type="button"
+              onClick={onClose}
+              className={`w-full rounded-full py-3 text-sm font-bold cursor-pointer ${
+                dark ? "bg-white/10 border border-white/25 text-white" : "bg-white/70 border border-rose-200 text-[#8b1424]"
+              }`}
+            >
+              Burada qal
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 export function EtirafView({
   data,
   preview = false,
@@ -546,6 +650,7 @@ export function EtirafView({
   const [opened, setOpened] = useState(!withIntro);
   const audioOnly = Boolean(data.audioUrl) && data.photos.length === 0 && !data.message;
   const intro = INTRO_THEMES[design];
+  const [leaveOpen, setLeaveOpen] = useState(false);
   const musicRef = useRef<HTMLAudioElement>(null);
   const [musicOn, setMusicOn] = useState(false);
 
@@ -557,6 +662,22 @@ export function EtirafView({
   const openSurprise = () => {
     setOpened(true);
     playMusic();
+  };
+
+  // Səs yazısı oxunanda fon musiqisi dayanır, səs bitəndə/dayananda yenidən davam edir.
+  const resumeMusicRef = useRef(false);
+  const onVoicePlaying = (playing: boolean) => {
+    const m = musicRef.current;
+    if (!m) return;
+    if (playing) {
+      if (!m.paused) {
+        resumeMusicRef.current = true;
+        m.pause();
+      }
+    } else if (resumeMusicRef.current) {
+      resumeMusicRef.current = false;
+      playMusic();
+    }
   };
 
   const toggleMusic = () => {
@@ -615,17 +736,23 @@ export function EtirafView({
 
         {data.audioUrl && (
           <div className="w-full">
-            <AudioPlayer src={playableAudioUrl(data.audioUrl)} theme={theme} knownDuration={data.audioDuration} />
+            <AudioPlayer
+              src={playableAudioUrl(data.audioUrl)}
+              theme={theme}
+              knownDuration={data.audioDuration}
+              onPlayingChange={data.musicUrl ? onVoicePlaying : undefined}
+            />
           </div>
         )}
 
         {!preview && (
-          <Link
-            href="/etiraf"
-            className={`mt-4 text-xs font-semibold opacity-70 hover:opacity-100 ${theme.title}`}
+          <button
+            type="button"
+            onClick={() => setLeaveOpen(true)}
+            className={`mt-4 text-xs font-semibold opacity-70 hover:opacity-100 cursor-pointer ${theme.title}`}
           >
             belink.az/etiraf ilə hazırlanıb ♡
-          </Link>
+          </button>
         )}
       </div>
 
@@ -651,6 +778,8 @@ export function EtirafView({
           )}
         </>
       )}
+
+      {leaveOpen && <LeaveConfirm design={design} onClose={() => setLeaveOpen(false)} />}
 
       {!opened && (
         <button

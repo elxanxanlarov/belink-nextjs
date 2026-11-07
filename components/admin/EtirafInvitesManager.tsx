@@ -283,7 +283,7 @@ function DemoLinksCard() {
         <div className="min-w-0">
           <h3 className="font-extrabold text-gray-900 text-base">Nümunələr səhifəsi</h3>
           <p className="text-xs text-gray-400 mt-0.5">
-            Bütün paketlər (5 / 7 / 10 / 12 / 15 AZN), dizaynlar və WhatsApp sifariş düyməsi bir səhifədə.
+            Bütün paketlər (5 / 7 / 10 / 12 / 15 / 17 AZN), dizaynlar və WhatsApp sifariş düyməsi bir səhifədə.
           </p>
           <p className="text-xs font-semibold text-[#8b1424] mt-1 truncate">{url}</p>
         </div>

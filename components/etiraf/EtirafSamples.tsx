@@ -20,6 +20,7 @@ const COVERS: Record<string, string> = {
   "sekil-metn": "/demo/gul-buket.jpg",
   "sekil-metn-musiqi": "/demo/zer-uzuk.jpg",
   tam: "/demo/gul-urek.jpg",
+  "tam-musiqi": "/demo/nar-hediyye.jpg",
 };
 
 function WhatsAppIcon() {
@@ -33,10 +34,10 @@ function WhatsAppIcon() {
 const includeIcon = (item: string) =>
   item.startsWith("Şəkil") ? (
     <ImageIcon size={14} />
+  ) : item.startsWith("Səs") ? (
+    <Mic size={14} />
   ) : item.includes("musiqi") ? (
     <Music size={14} />
-  ) : item.includes("Səs") ? (
-    <Mic size={14} />
   ) : item.includes("mətn") ? (
     <Type size={14} />
   ) : (

@@ -15,6 +15,7 @@ const MESSAGE =
   "Səninlə tanış olduğum gün həyatımın ən gözəl günü oldu.\nHər gülüşün mənim üçün bir hədiyyədir.\nYaxşı ki, varsan... ❤️";
 
 const MELODY = "/etiraf/demo/melodiya.wav";
+const BACKGROUND_MUSIC = "/etiraf/demo/fon-musiqisi.wav";
 
 export interface EtirafDemo {
   id: string;
@@ -90,6 +91,23 @@ export const ETIRAF_PACKAGES: EtirafPackage[] = [
     music: false,
     design: "red",
   },
+  {
+    id: "tam-musiqi",
+    label: "Şəkil + mətn + səs yazısı + fon musiqisi",
+    price: 17,
+    includes: [
+      "Şəkillər",
+      "Ürək sözləri (mətn)",
+      "Səs yazısı — dinləyəndə musiqi dayanır",
+      "Avtomatik açılan fon musiqisi",
+      "QR kodlu hədiyyə kartı",
+    ],
+    photos: true,
+    text: true,
+    audio: true,
+    music: true,
+    design: "night",
+  },
 ];
 
 // Əvvəl paylaşılmış nümunə linkləri işləməyə davam etsin deyə saxlanılır (siyahıda göstərilmir).
@@ -113,7 +131,7 @@ export function getEtirafDemo(id: string, design?: string | null) {
     message: demo.text ? MESSAGE : null,
     photos: demo.photos ? PHOTOS : [],
     audioUrl: demo.audio ? MELODY : null,
-    musicUrl: demo.music ? MELODY : null,
+    musicUrl: demo.music ? BACKGROUND_MUSIC : null,
     design: chosen,
   };
 }
